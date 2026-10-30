@@ -28,7 +28,8 @@ export const CompanyProfile = z.object({
   hq: z.object({ city: z.string(), country: z.string() }),
   sites: z.array(z.object({ city: z.string(), country: z.string(), role: z.string() })).default([]),
   founded: z.number().int().optional(),
-  staff: z.object({ total: z.number().int(), by_role: z.record(z.string(), z.number().int()).default({}) }),
+  /** Unset when the company has not published a headcount; nothing is invented. */
+  staff: z.object({ total: z.number().int(), by_role: z.record(z.string(), z.number().int()).default({}) }).optional(),
   turnover: z.array(z.object({ year: z.number().int(), amount_minor: Minor, currency: z.string() })).default([]),
   services: z.array(z.string()).default([]),
   capabilities: z.array(z.string()).default([]),

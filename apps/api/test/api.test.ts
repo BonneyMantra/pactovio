@@ -63,6 +63,15 @@ describe('seeded GET endpoints validate against their contracts', () => {
     expect(m.lots).toEqual(['1', '2', '3']);
     expect(m.verdicts).toHaveLength(3);
   });
+  it('a new session lands in the workspace named by config:default_workspace (sample workspaces only)', async () => {
+    const land = async () => (await (await call('/api/session', { headers: {} })).json()) as { workspace_id: string };
+    expect((await land()).workspace_id).toBe('ws_harbour_digital');
+    await env.CACHE.put('config:default_workspace', 'ws_kestrel_sensing');
+    expect((await land()).workspace_id).toBe('ws_kestrel_sensing');
+    await env.CACHE.put('config:default_workspace', 'ws_missing');
+    expect((await land()).workspace_id).toBe('ws_harbour_digital');
+    await env.CACHE.delete('config:default_workspace');
+  });
   it('quote arithmetic in the seed is consistent (integer minor units)', async () => {
     const cookie = (await call('/api/today')).headers.get('set-cookie')!.split(';')[0]!;
     await call('/api/workspaces/switch', { method: 'POST', headers: { 'content-type': 'application/json', cookie }, body: '{"workspace_id":"ws_kestrel_sensing"}' });

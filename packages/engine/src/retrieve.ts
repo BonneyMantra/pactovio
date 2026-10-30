@@ -42,8 +42,9 @@ const round = (v: number[]) => v.slice(0, EMBED_DIMS).map((x) => Number(x.toFixe
 export async function ensureProfileEvidence(env: Env, workspaceId: string, p: CompanyProfile): Promise<number> {
   const rows: { key: string; kind: string; title: string; text: string }[] = [
     { key: 'services', kind: 'profile', title: 'Company profile: services and capabilities', text: `${p.legal_name} provides: ${p.services.join('; ')}. Technical capabilities: ${p.capabilities.join('; ')}.` },
-    { key: 'staff', kind: 'profile', title: 'Company profile: staffing and sites', text: `${p.legal_name} employs ${p.staff.total} staff${p.founded ? `, founded in ${p.founded}` : ''}: ${Object.entries(p.staff.by_role).map(([r, n]) => `${n} ${r.replace(/_/g, ' ')}`).join(', ')}. Sites: ${p.sites.map((s) => `${s.city} (${s.role})`).join('; ')}.` },
   ];
+  if (p.staff) rows.push({ key: 'staff', kind: 'profile', title: 'Company profile: staffing and sites', text: `${p.legal_name} employs ${p.staff.total} staff${p.founded ? `, founded in ${p.founded}` : ''}: ${Object.entries(p.staff.by_role).map(([r, n]) => `${n} ${r.replace(/_/g, ' ')}`).join(', ')}. Sites: ${p.sites.map((s) => `${s.city} (${s.role})`).join('; ')}.` });
+  else if (p.sites.length) rows.push({ key: 'sites', kind: 'profile', title: 'Company profile: sites', text: `${p.legal_name}${p.founded ? `, founded in ${p.founded}` : ''}. Sites: ${p.sites.map((s) => `${s.city} (${s.role})`).join('; ')}.` });
   if (p.insurance) {
     const i = p.insurance;
     rows.push({ key: 'insurance', kind: 'insurance', title: 'Company profile: insurance cover', text: `Public liability ${eurFromMinor(i.public_liability_minor)}; professional indemnity ${eurFromMinor(i.professional_indemnity_minor)}${i.employers_liability_minor ? `; employers liability ${eurFromMinor(i.employers_liability_minor)}` : ''}${i.cyber_minor ? `; cyber ${eurFromMinor(i.cyber_minor)}` : ''}.` });

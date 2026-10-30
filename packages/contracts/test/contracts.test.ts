@@ -31,7 +31,7 @@ describe('schemas', () => {
   it('sample company profiles satisfy CompanyProfile and Workspace', () => {
     expect(() => CompanyProfile.parse(harbourProfile)).not.toThrow();
     expect(() => CompanyProfile.parse(kestrelProfile)).not.toThrow();
-    expect(Workspace.parse({ id: 'ws_x', name: 'n', segment: 'it', profile: harbourProfile, sample: true, created_at: 'now' }).profile.staff.total).toBe(64);
+    expect(Workspace.parse({ id: 'ws_x', name: 'n', segment: 'it', profile: harbourProfile, sample: true, created_at: 'now' }).profile.staff?.total).toBe(64);
   });
   it('rejects float money and unknown segments', () => {
     expect(() => Quote.parse({ id: 'q', workspace_id: 'w', design_request_id: null, tender_id: null, currency: 'EUR', lines: [], subtotal_minor: 1.5, discount_minor: 0, tax_minor: 0, total_minor: 0, valid_until: null, status: 'draft' })).toThrow();

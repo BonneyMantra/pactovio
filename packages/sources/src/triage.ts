@@ -24,7 +24,7 @@ const list = (xs: string[] | undefined, n = 8) => (xs ?? []).slice(0, n).join(';
 export function companySummary(ws: TriageWorkspace): string {
   const p = ws.profile;
   return [
-    `Company: ${p.legal_name ?? ws.name}, ${p.hq?.city ?? ''} ${p.hq?.country ?? ''}, ${p.staff?.total ?? '?'} staff.`,
+    `Company: ${p.legal_name ?? ws.name}, ${p.hq?.city ?? ''} ${p.hq?.country ?? ''}, ${p.staff?.total ? `${p.staff.total} staff` : 'headcount not stated'}.`,
     `Services: ${list(p.services)}.`,
     `Capabilities: ${list(p.capabilities)}.`,
     `Certifications: ${list(p.certifications?.map((c) => c.name))}.`,

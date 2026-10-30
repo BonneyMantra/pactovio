@@ -4,6 +4,19 @@ import { HttpError, newId } from '@pactovio/contracts';
 import { one, exec, nowIso, sha256Hex } from './db';
 import { DEFAULT_WORKSPACE_ID, SESSION_COOKIE, type Auth, type AppEnv } from './types';
 
+/** KV key (CACHE) naming the sample workspace new sessions land in; unset, unknown or non-sample falls back to DEFAULT_WORKSPACE_ID. */
+export const DEFAULT_WORKSPACE_KEY = 'config:default_workspace';
+
+export async function defaultWorkspaceId(env: AppEnv['Bindings']): Promise<string> {
+  try {
+    const id = await env.CACHE.get(DEFAULT_WORKSPACE_KEY);
+    if (id && (await one<{ id: string }>(env.DB, 'SELECT id FROM workspaces WHERE id = ? AND sample = 1', id))) return id;
+  } catch {
+    // KV unavailable: use the built-in default
+  }
+  return DEFAULT_WORKSPACE_ID;
+}
+
 /** /api: anonymous judge session cookie `pv_s`, bound to a sample workspace. Created on first visit. */
 export async function sessionAuth(c: Context<AppEnv>): Promise<Auth> {
   const db = c.env.DB;
@@ -13,10 +26,11 @@ export async function sessionAuth(c: Context<AppEnv>): Promise<Auth> {
     if (s) return { workspaceId: s.workspace_id, sessionId: s.id, via: 'session' };
   }
   const id = newId('session');
-  await exec(db, 'INSERT INTO judge_sessions (id, workspace_id, created_at) VALUES (?, ?, ?)', id, DEFAULT_WORKSPACE_ID, nowIso());
+  const workspaceId = await defaultWorkspaceId(c.env);
+  await exec(db, 'INSERT INTO judge_sessions (id, workspace_id, created_at) VALUES (?, ?, ?)', id, workspaceId, nowIso());
   const secure = new URL(c.req.url).protocol === 'https:';
   setCookie(c, SESSION_COOKIE, id, { httpOnly: true, sameSite: 'Lax', secure, path: '/', maxAge: 60 * 60 * 24 * 30 });
-  return { workspaceId: DEFAULT_WORKSPACE_ID, sessionId: id, via: 'session' };
+  return { workspaceId, sessionId: id, via: 'session' };
 }
 
 /** /v1: `Authorization: Bearer pk_...`, looked up by SHA-256. */
