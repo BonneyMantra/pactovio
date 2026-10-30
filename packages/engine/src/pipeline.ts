@@ -169,3 +169,24 @@ export async function failRun(rc: RunCtx, err: unknown): Promise<void> {
   }
 }
 
+
+/**
+ * Re-write the verdicts of a finished run from its stored artifacts (overview, pack block) and the current matrix, e.g.
+ * after a decision-rule fix. No extraction or matching is repeated; the extra model calls are logged as steps of the same run.
+ */
+export async function rerunVerdicts(rc: RunCtx): Promise<{ lot: string; decision: string; score: number }[]> {
+  const { env } = rc;
+  const onStep = modelLogger(env, rc.runId, rc.workspaceId);
+  const overview = await getJson<Overview>(rc, 'overview.json');
+  const built = await getJson<BuiltPrompt>(rc, 'block.json');
+  const profile = await profileOf(rc);
+  const dl = overview.submission_deadline ? new Date(overview.submission_deadline) : null;
+  const results = evaluateGates(overview.gates, profile, dl && !Number.isNaN(dl.getTime()) ? dl : new Date());
+  const docNames = Object.fromEntries(built.docs.map((d) => [d.docId, d.filename]));
+  await logStep(env, rc.runId, rc.workspaceId, { purpose: 'Re-run verdicts after a decision-rule fix', model: '', status: 'ok', tokensIn: 0, tokensOut: 0, tokensCached: 0, ms: 0, costUsd: 0, summary: 'Gate rows no longer count as lot gaps and reasoning that came back malformed is regenerated. Extraction and matching are not repeated.' });
+  return Promise.all(overview.lots.map(async (l) => {
+    const gates = results.filter((g: GateResult) => g.lot === null || g.lot === l.lot_no);
+    const v = await writeVerdict(env, { workspaceId: rc.workspaceId, tenderId: rc.tenderId, runId: rc.runId, lot: l.lot_no, gates, pack: built.text, docNames, onStep, fetch: rc.fetch });
+    return { lot: v.lot, decision: v.decision, score: v.score };
+  }));
+}

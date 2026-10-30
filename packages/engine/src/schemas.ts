@@ -58,7 +58,7 @@ export const JudgeBatch = z.object({
   judgements: z.array(z.object({ idx: z.number().int(), coverage: Coverage, evidence_ids: z.array(z.string()), note: z.string() })),
 });
 
-export const VerdictReasons = z.object({ reasons: z.array(z.string()).min(1).max(6) });
+export const VerdictReasons = z.object({ reasons: z.array(z.string().min(30)).min(1).max(6) });
 
 export const EvidenceRecord = z.object({
   title: z.string(),

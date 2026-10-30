@@ -73,6 +73,7 @@ const fakeFetch = (async (url: string | URL | Request, init?: RequestInit) => {
       return { idx: Number(m[1]), coverage, evidence_ids: [first], note: `${coverage}: see ${first}` };
     }) }));
   }
+  if (schema === 'verdict_reasons' && /reasoning for LOT 2/.test(JSON.stringify(body.messages))) return completion(body.model, JSON.stringify({ reasons: ['][ '] })); // malformed: the rule-based fallback must take over
   if (schema === 'verdict_reasons') return completion(body.model, JSON.stringify({ reasons: ['B1.4 (CFT.docx p.7): only a 24x5 desk is evidenced, subcontract 24x7 cover.', 'Attach the penetration test report before submission.'] }), { prompt_tokens: 50_000, completion_tokens: 400, prompt_tokens_details: { cached_tokens: 40_000 } });
   // drafting (fast model): one supported sentence and one invented SLA that the claim check must strike
   return completion(body.model, 'We recover hosted applications with an RTO of 4 hours and an RPO of 1 hour. We also guarantee 24x7 on-call cover across every lot.');
@@ -139,6 +140,12 @@ describe('pack run pipeline with recorded model responses', () => {
     expect(v[0]!.decision).toBe('CONDITIONAL'); // public liability EUR 6M < EUR 6.5M, but the pack lets it be met after award
     expect(JSON.parse(v[0]!.gates_json).find((g: { name: string }) => g.name.startsWith('Public liability')).detail).toContain('can be met after award');
     expect(v.every((x) => x.run_id === runId)).toBe(true);
+    // gate rows are not lot gaps: Lot 2 has one mandatory GAP of its own and must stay CONDITIONAL, not tip into NO_BID
+    expect(v[1]!.decision).toBe('CONDITIONAL');
+    // malformed reasoning from the model never fails the run: rule-based reasons from the same facts replace it
+    const lot2 = JSON.parse(v[1]!.reasons_json) as string[];
+    expect(lot2.some((r) => r.startsWith('Public liability insurance')), JSON.stringify(lot2)).toBe(true);
+    expect(lot2.every((r) => r.length > 30)).toBe(true);
     expect(JSON.parse(v[0]!.reasons_json)[0]).toContain('B1.4');
     expect(JSON.parse(v[0]!.gates_json).map((g: { name: string }) => g.name).join()).toContain('Turnover A2');
   });
@@ -170,6 +177,6 @@ describe('pack run pipeline with recorded model responses', () => {
   });
 
   it('prompt-cache discipline: the pack block leads every whole-pack prompt', async () => {
-    expect(calls.filter((c) => c.model.includes('Ultra')).length).toBe(1 + 2 * 2 + 2); // overview + 2 lots x (sections + requirements) + 2 verdicts
+    expect(calls.filter((c) => c.model.includes('Ultra')).length).toBe(1 + 2 * 2 + 3); // overview + 2 lots x (sections + requirements) + 3 verdict calls (lot 2 is retried once after a malformed answer)
   });
 });

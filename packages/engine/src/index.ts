@@ -7,7 +7,7 @@ import { fillFormImpl } from './form';
 import { buyerIntelImpl } from './intel';
 import { startPackRunImpl } from './start';
 
-export { runPackPipeline, failRun } from './pipeline';
+export { runPackPipeline, failRun, rerunVerdicts } from './pipeline';
 export { runReplay, snapshotRun, findReplay, type ReplaySnapshot } from './replay';
 export type { PackRunParams } from './start';
 export type { RunCtx, Stepper } from './types';
