@@ -96,6 +96,17 @@ describe('sync and disconnect', () => {
     expect(f.log).toContain('POST /trigger_instances/OUTLOOK_MESSAGE_TRIGGER/upsert');
   });
 
+  it('an account another workspace connected itself is never shared, and a copy that was shared is detached', async () => {
+    const owned = acct('ca_slack_owned', 'slack');
+    await saveConnector(env, 'ws_kestrel_sensing', 'slack', { status: 'connected', external_account_id: 'ca_slack_owned', connected_at: '2026-10-30T00:00:00Z', meta: { composio_user_id: 'pactovio-demo' } });
+    await saveConnector(env, W, 'slack', { status: 'connected', external_account_id: 'ca_slack_owned', connected_at: '2026-10-30T00:00:00Z', meta: { composio_user_id: 'pactovio-demo', owner: true } });
+    await syncConnectors(env, 'ws_kestrel_sensing', { fetch: fakeComposio({}, { accounts: [owned] }).fetch }, true);
+    expect(await getConnector(env, 'ws_kestrel_sensing', 'slack')).toMatchObject({ status: 'available', external_account_id: null });
+    await syncConnectors(env, W, { fetch: fakeComposio({}, { accounts: [owned] }).fetch }, true);
+    expect(await getConnector(env, W, 'slack')).toMatchObject({ status: 'connected', external_account_id: 'ca_slack_owned' });
+    await saveConnector(env, W, 'slack', { status: 'available', external_account_id: null, connected_at: null, meta: { composio_user_id: 'pactovio-demo' } });
+  });
+
   it('a Composio account that disappeared falls back to available', async () => {
     await syncConnectors(env, 'ws_kestrel_sensing', { fetch: fakeComposio({}, { accounts: [acct('ca_ol', 'outlook')] }).fetch }, true);
     const st = Object.fromEntries((await buildCatalog(env, 'ws_kestrel_sensing')).map((i) => [i.provider, i.status]));

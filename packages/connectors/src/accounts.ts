@@ -66,9 +66,10 @@ export async function connectUrl(
 }
 
 /** Mark a provider connected (and its shared-account sibling), then register the mailbox trigger for email providers. */
-export async function markConnected(env: Env, workspaceId: string, provider: string, acct: { id: string; label: string | null }, deps: Deps = {}): Promise<void> {
+export async function markConnected(env: Env, workspaceId: string, provider: string, acct: { id: string; label: string | null }, deps: Deps = {}, owner = false): Promise<void> {
   const cur = await getConnector(env, workspaceId, provider);
-  const meta = { ...(cur && !isSample(cur) ? cur.meta : {}), account_label: acct.label, composio_user_id: cur?.meta.composio_user_id ?? SAMPLE_USER_ID };
+  // `owner` marks the workspace that completed the connect flow; sync never shares an owned account with other workspaces.
+  const meta = { ...(cur && !isSample(cur) ? cur.meta : {}), account_label: acct.label, composio_user_id: cur?.meta.composio_user_id ?? SAMPLE_USER_ID, ...(owner ? { owner: true } : {}) };
   delete (meta as Record<string, unknown>).pending;
   delete (meta as Record<string, unknown>).sample;
   await saveConnector(env, workspaceId, provider, { status: 'connected', external_account_id: acct.id, connected_at: new Date().toISOString(), meta });
@@ -108,7 +109,7 @@ export async function completeCallback(
     await saveConnector(env, q.w, q.p, { status: 'error', meta: { ...row.meta, pending: undefined, last_error: `Composio reports ${acct.status}` } });
     return done(false);
   }
-  await markConnected(env, q.w, q.p, { id: acct.id, label: acct.label }, deps);
+  await markConnected(env, q.w, q.p, { id: acct.id, label: acct.label }, deps, true);
   await env.CACHE.delete(`cx:sync:${q.w}`).catch(() => undefined);
   return done(true);
 }
@@ -129,10 +130,18 @@ export async function syncConnectors(env: Env, workspaceId: string, deps: Deps =
   } catch {
     return; // Composio unreachable: keep what we have
   }
+  const ownedElsewhere = new Set((await env.DB.prepare("SELECT external_account_id FROM connectors WHERE workspace_id != ? AND status = 'connected' AND json_extract(meta_json, '$.owner') = 1")
+    .bind(workspaceId).all<{ external_account_id: string | null }>()).results.map((r) => r.external_account_id).filter((x): x is string => !!x));
   for (const spec of PROVIDERS) {
     const row = rows.find((r) => r.provider === spec.provider) ?? null;
     const uid = (row?.meta.composio_user_id as string | undefined) ?? SAMPLE_USER_ID;
-    const acct = accounts.find((a) => a.toolkit === spec.toolkit && a.userId === uid);
+    const found = accounts.find((a) => a.toolkit === spec.toolkit && a.userId === uid);
+    // An account another workspace connected itself belongs to that workspace only (its mail, chat and files).
+    const acct = found && !ownedElsewhere.has(found.id) ? found : undefined;
+    if (found && !acct && row?.status === 'connected' && row.external_account_id === found.id && !row.meta.owner) {
+      await saveConnector(env, workspaceId, spec.provider, { status: 'available', external_account_id: null, connected_at: null, meta: { composio_user_id: row.meta.composio_user_id, rules: row.meta.rules } });
+      continue;
+    }
     if (acct && !(row?.status === 'connected' && row.external_account_id === acct.id && !isSample(row))) {
       const trigger = row?.meta.config?.trigger;
       await markConnected(env, workspaceId, spec.provider, { id: acct.id, label: acct.label }, deps).catch(() => undefined);
