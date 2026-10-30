@@ -3,7 +3,7 @@ import { api, h, icon, fmt, empty, errorBox, skeleton } from '../ui.js';
 import { doorOf, doorChip, sourceMark, senderName, tabs } from './work-kit.js';
 
 const FILTERS = [
-  { id: 'all', label: 'All' }, { id: 'rfq', label: 'RFQ' }, { id: 'rfp', label: 'RFP' },
+  { id: 'all', label: 'All' }, { id: 'rfp', label: 'RFP / RFQ' },
   { id: 'design', label: 'Design' }, { id: 'tender', label: 'Tender' }, { id: 'ignored', label: 'Ignored' },
 ];
 

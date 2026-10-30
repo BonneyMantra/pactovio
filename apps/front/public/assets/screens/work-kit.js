@@ -4,7 +4,7 @@ import { h, icon, chip, PROVIDER, providerMark } from '../ui.js';
 export const dash = '—';
 export const val = (v) => (v == null || v === '' ? dash : v);
 
-const DOOR = { rfq: 'RFQ', rfp: 'RFP', design: 'Design request', tender: 'Tender', other: 'Other' };
+const DOOR = { rfq: 'RFP / RFQ', rfp: 'RFP / RFQ', design: 'Design request', tender: 'Tender', other: 'Other' };
 const DOOR_TONE = { rfq: 'accent', rfp: 'info', design: 'accent', tender: 'info', other: '' };
 
 /** The intake's effective door: the classifier's call when present, else the stored door. */

@@ -6,12 +6,13 @@ const BY_EXT: Record<string, PackKind> = {
   pdf: 'pdf', docx: 'docx', doc: 'docx', docm: 'docx', xlsx: 'xlsx', xls: 'xlsx', xlsm: 'xlsx',
   png: 'image', jpg: 'image', jpeg: 'image', webp: 'image', gif: 'image', tif: 'image', tiff: 'image',
   zip: 'zip',
+  txt: 'email', eml: 'email',
 };
 
 export const extOf = (filename: string): string => (filename.split('.').pop() ?? '').toLowerCase();
 export const baseName = (path: string): string => path.split('/').pop() ?? path;
 
-/** Document kind from the file extension; null for files we do not read (xml, txt, exe...). */
+/** Document kind from the file extension; null for files we do not read (xml, exe...). Plain text and .eml read as `email`. */
 export function kindOf(filename: string): PackKind | null {
   return BY_EXT[extOf(filename)] ?? null;
 }
@@ -25,4 +26,5 @@ export const MIME: Record<string, string> = {
   xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp', gif: 'image/gif',
   zip: 'application/zip',
+  txt: 'text/plain; charset=utf-8', eml: 'message/rfc822',
 };

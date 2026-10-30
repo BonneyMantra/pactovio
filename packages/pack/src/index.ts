@@ -25,11 +25,24 @@ async function docIdFor(r2Key: string): Promise<string> {
 
 type Extracted = { doc: Omit<PackDoc, 'docId' | 'filename'>; pages: number };
 
+/** A pasted or e-mailed request (message.txt): split into ~4,000-character pages on paragraph breaks. */
+export function textPages(text: string, size = 4000): PackDoc['pages'] {
+  const pages: PackDoc['pages'] = [];
+  let cur = '';
+  for (const para of text.replace(/\r\n/g, '\n').split(/\n{2,}/)) {
+    if (cur && cur.length + para.length + 2 > size) { pages.push({ n: pages.length + 1, text: cur }); cur = ''; }
+    cur = cur ? `${cur}\n\n${para}` : para;
+  }
+  if (cur.trim()) pages.push({ n: pages.length + 1, text: cur });
+  return pages;
+}
+
 async function extractOne(filename: string, key: string, bytes: Uint8Array): Promise<Extracted | null> {
   const kind = kindOf(filename);
   if (!kind || kind === 'zip') return null;
   const base = { kind, isForm: false, pages: [] as PackDoc['pages'], images: [] as PackDoc['images'] };
   if (kind === 'image') return { doc: { ...base, images: [{ page: 1, r2Key: key }] }, pages: 1 };
+  if (kind === 'email') { const pages = textPages(new TextDecoder().decode(bytes)); return { doc: { ...base, pages }, pages: pages.length }; }
   if (isLegacyOffice(filename)) {
     return { doc: { ...base, isForm: /form|schedule|declaration/i.test(filename), pages: [{ n: 1, text: LEGACY_NOTE }] }, pages: 1 };
   }
@@ -84,7 +97,7 @@ export async function extractPack(env: Env, input: ExtractPackInput): Promise<Pa
       const dir = key.replace(/\.[^./]+$/, '');
       for (const [name, data] of Object.entries(entries)) {
         const entryKey = `${dir}/${name}`;
-        if (kindOf(baseName(name)) === null || /(^|\/)(__MACOSX|\.)/.test(name)) continue;
+        if (kindOf(baseName(name)) === null || kindOf(baseName(name)) === 'email' || /(^|\/)(__MACOSX|\.)/.test(name)) continue; // text inside a pack zip is readme noise
         await env.FILES.put(entryKey, data, { httpMetadata: { contentType: MIME[extOf(name)] ?? 'application/octet-stream' } });
         await handle(baseName(name), entryKey, data, depth + 1);
       }

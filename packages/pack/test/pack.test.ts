@@ -87,6 +87,16 @@ describe('extractPack in a Worker env', () => {
     const out = await extractPack(env, { intakeId: 'int_sample_teagasc', r2Keys: ['packs/tnd_t2/broken.pdf'] });
     expect(out.docs[0]!.pages[0]!.text).toContain('Could not read broken.pdf');
   });
+
+  it('reads a pasted or e-mailed request (message.txt) as text pages', async () => {
+    const body = `From: Procurement <buy@harbourview-port.example>\nSubject: RFQ: 40 environmental sensors\n\nPlease quote 40 visibility sensors, IP67.\n\n${'Delivery within 8 weeks. '.repeat(300)}`;
+    await env.FILES.put('intakes/int_sample_teagasc/message.txt', body);
+    const out = await extractPack(env, { intakeId: 'int_sample_teagasc', r2Keys: ['intakes/int_sample_teagasc/message.txt'] });
+    const doc = out.docs.find((d) => d.filename === 'message.txt')!; // merges into the intake's earlier text.json
+    expect(doc.kind).toBe('email');
+    expect(doc.pages.length).toBeGreaterThan(1);
+    expect(doc.pages[0]!.text).toContain('40 visibility sensors');
+  });
 });
 
 describe.skipIf(!real)('real Teagasc P4941 pack', () => {
