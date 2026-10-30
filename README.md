@@ -83,7 +83,7 @@ The cost is dominated by Ultra reading the pack once per section group with a ca
 
 15 connectors through Composio managed auth, two per category: Gmail and Outlook, Slack and Microsoft Teams, HubSpot and Salesforce, Google Drive and Dropbox, Google Calendar and Outlook Calendar, Jira and Asana, DocuSign, QuickBooks and Xero. Each does one real job (mail trigger to classified intake with reply drafted never sent, chat posts with approve and decline links, a deal per bid, uploads of filled forms and quotes, calendar events for deadlines, a task per matrix gap, a quote sent for signature, an estimate from an approved quote).
 
-**Live-tested on 30 Oct 2026 against real connected test accounts** (`npx tsx scripts/connector-e2e.ts all --api https://pactovio.pages.dev`): 9 passed, 0 failed. Each check performs the real action, reads the object back through Composio, then cleans up.
+**Live-tested on 30 Oct 2026 against real connected test accounts** (`npx tsx scripts/connector-e2e.ts all --api https://pactovio.pages.dev`): 9 checks passed across 8 connectors, 0 failed. Each check performs the real action, reads the object back through Composio, then cleans up.
 
 | Connector | Live check | Result |
 |---|---|---|
@@ -125,7 +125,7 @@ The real tender packs are public documents from eTenders, TED and Find a Tender.
 
 ## Cut or not done
 
-- Connectors: 9 of 15 live-tested (see Connectors); HubSpot, Outlook, Outlook Calendar, Teams, QuickBooks, DocuSign and Xero are fixture-tested only.
+- Connectors: 8 of 15 live-tested, 9 checks (see Connectors); HubSpot, Outlook, Outlook Calendar, Teams, QuickBooks, DocuSign and Xero are fixture-tested only.
 - Scanned PDFs without a text layer are rejected on evidence upload (upload PNG or JPG); PDF image pages are not rendered to PNG for the vision step.
 - Form fill covers table rows keyed by reference number; free-form content controls are untouched.
 - Embeddings are slow on the shared link (about 25 s a request), noticeable on evidence upload.

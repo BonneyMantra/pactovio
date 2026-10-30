@@ -1,23 +1,164 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Pactovio</title>
-<meta name="description" content="Pactovio is the pre-sales engine for technical B2B suppliers. Every tender, RFP and design request, answered with proof.">
-<style>body{font-family:system-ui,sans-serif;max-width:42rem;margin:3rem auto;padding:0 1rem;line-height:1.6}</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pactovio — the pre-sales engine for technical suppliers</title>
+  <meta name="description" content="Pactovio reads every tender, RFQ and design request, tells you whether to bid, and drafts the answer with sources you can check. Built on NVIDIA Nemotron, served by Nebius Token Factory." />
+  <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="/assets/pv.css" />
+  <link rel="stylesheet" href="/assets/landing.css" />
 </head>
 <body>
-<h1>Pactovio</h1>
-<p>The pre-sales engine for technical B2B suppliers. Every tender, RFP and design request, answered with proof.</p>
-<ul>
-<li>Finds public tenders that fit your company and reads the whole pack.</li>
-<li>Says bid or no-bid for each lot, with the page every reason comes from.</li>
-<li>Drafts answers only from your own evidence and fills the buyer's own forms.</li>
-<li>Matches customer design requests against your datasheets and prices the quote in code.</li>
-<li>Connects to the tools your team already uses: email, chat, CRM, files, calendar, project tools, e-signature and accounting.</li>
-</ul>
-<p>Built on NVIDIA Nemotron models served by Nebius Token Factory. The full app is launching here shortly.</p>
-<p><a href="https://github.com/BonneyMantra/pactovio">Source on GitHub</a> · <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a></p>
+<header class="l-nav" id="nav"><div class="container in">
+  <a class="l-logo" href="/"><span class="mark" data-ico="logo"></span>Pactovio</a>
+  <nav class="l-links" aria-label="Main"><a href="#product">Product</a><a href="#how">How it works</a><a href="#connectors">Connectors</a><a href="/pricing">Pricing</a><a href="https://github.com/BonneyMantra/pactovio" target="_blank" rel="noopener">GitHub ↗</a></nav>
+  <div class="l-cta"><a class="btn btn-secondary" href="/app">Open the app</a><a class="btn btn-primary" href="/app">Try it live</a></div>
+</div></header>
+
+<main>
+<section class="l-hero" id="product"><div class="container">
+  <div class="top">
+    <div>
+      <h1 class="display">Every tender and RFQ,<br />answered before the deadline</h1>
+      <p class="lead">Pactovio reads the whole pack, every RFQ and every design request, checks each gate, and tells you whether to bid. Then it drafts the answer and the quote from your own evidence, with sources you can check. When something is missing, it asks before it acts.</p>
+    </div>
+    <div class="stack"><a class="btn btn-primary" href="/app">Try it live</a><a class="btn btn-secondary" href="#how">See how it works</a></div>
+  </div>
+  <div class="teal"><div class="pw" aria-label="Pactovio product preview">
+    <aside class="pw-side">
+      <div class="row" style="font-weight:610;color:var(--ink);gap:8px;margin-bottom:8px"><span class="l-logo"><span class="mark" data-ico="logo" style="width:18px;height:18px;border-radius:5px"></span></span>Pactovio</div>
+      <div class="row"><span data-ico="home"></span>Today</div>
+      <div class="row"><span data-ico="inbox"></span>Inbox<span class="n">3</span></div>
+      <div class="row"><span data-ico="tender"></span>Tenders<span class="n">4</span></div>
+      <div class="row"><span data-ico="quote"></span>Quotes</div>
+      <div class="row on"><span data-ico="agent"></span>Agent</div>
+      <div class="row"><span data-ico="plug"></span>Connections</div>
+      <div class="lbl"><span>Threads</span><span>⌕</span></div>
+      <div class="thread on">Berth-side monitoring RFQ</div>
+      <div class="thread">Coastal visibility sensors</div>
+      <div class="thread">Web apps maintenance, 3 lots</div>
+      <div class="thread">Clarification deadline</div>
+      <div class="thread">Insurance cover check</div>
+      <div class="who"><span class="avatar" style="width:24px;height:24px;font-size:10px">BM</span><div><div style="font-weight:510">Bid desk</div><div class="muted" style="font-size:11px">Sales engineering</div></div></div>
+    </aside>
+    <div class="pw-main">
+      <div class="pw-top"><span>Berth-side monitoring RFQ</span><span class="ic"><span data-ico="clock"></span><span data-ico="out"></span></span></div>
+      <div class="pw-body"><div class="pw-msgs" id="hero-msgs">
+        <div class="msg"><span class="av you">BM</span><div><div class="name">You</div><div class="txt">A new email just came in from a port authority. Is it worth quoting?</div>
+          <div class="mail-card"><b>procurement@harbourview-port.example</b> · Gmail · 2 min ago<br />Four berth-side kiosks: temperature and humidity with a local display, RS-485 Modbus, 9–36 V DC, 4G backhaul. Indicative quote by Friday.</div></div></div>
+        <div class="msg tw" data-step="1"><span class="av bot" data-ico="spark"></span><div><div class="name">Pactovio</div>
+          <div class="done-row">Completed 6 actions <span data-ico="chev"></span></div>
+          <div class="txt">Classified as a <b>design request</b> by Nemotron Lightning. Four of five needs match your catalogue: the <u>THAPS sensor datasheet</u> covers temperature, humidity and an on-unit OLED display <span class="cite">1</span>, the <u>edge gateway spec</u> takes 9–36 V DC <span class="cite">2</span> and the <u>4G two-way unit</u> handles backhaul <span class="cite">3</span>. Modbus RTU on the gateway is not in its datasheet, so I flagged it as a gap instead of claiming it <span class="cite">4</span>. Draft quote: 6 lines, <b>$5,904.00</b>.</div>
+          <div class="srcs">4 sources used <span class="mk" style="background:#EA4335">G</span><span class="mk" style="background:#1FA463">D</span><span class="mk" style="background:#21201c">P</span><span class="mk" style="background:#00A1E0">S</span></div>
+          <div class="txt" style="margin-bottom:10px">Should I post the quote to #sales for approval?</div>
+          <div class="action-req"><span class="label"><span data-ico="paper"></span>Post the quote to #sales via Slack</span><span class="small ink2" style="margin-right:6px">See message</span><button class="btn btn-secondary btn-xs" type="button">Reject</button><button class="btn btn-primary btn-xs" type="button">Confirm</button></div>
+        </div></div>
+      </div></div>
+      <div class="pw-comp"><div class="composer"><span class="ph" id="hero-ph"></span><span data-ico="clip" class="muted" style="margin-bottom:6px"></span><button class="send" type="button" aria-label="Send"><span data-ico="send"></span></button></div></div>
+    </div>
+  </div></div>
+</div></section>
+
+<section class="l-sec" id="how"><div class="container">
+  <h2 class="stackh reveal"><span>Connect your tools<sup class="sup on">01</sup></span><span class="g">Ask in plain language<sup class="sup">02</sup></span><span class="g">Let Pactovio do the reading<sup class="sup">03</sup></span></h2>
+  <div class="cards3">
+    <div class="reveal"><div class="vcard" id="v-float"></div><div class="cap first"><div class="no on">01</div><h3>Integrate</h3><p>Plug Pactovio into your inbox, CRM, drive, calendar and project tools. Every RFQ, RFP and design request lands in one place, already classified.</p></div></div>
+    <div class="reveal"><div class="vcard"><div class="vcomp"><div class="composer"><span class="ph caret" id="v-type" style="flex:1;min-height:44px;font-size:15px"></span><span data-ico="clip" class="muted" style="margin-bottom:6px"></span><span class="send"><span data-ico="send"></span></span></div></div></div><div class="cap"><div class="no">02</div><h3 class="muted">Ask</h3><p>Ask about any tender or request the way you'd ask a bid manager, and get a straight answer with the page it came from. No digging through the pack.</p></div></div>
+    <div class="reveal"><div class="vcard"><div class="vsync"><div class="row"><span class="spin" data-ico="refresh"></span>Reading 3 sources <span class="mk" style="background:#EA4335">G</span><span class="mk" style="background:#1FA463">D</span><span class="mk" style="background:#00A1E0">S</span></div></div></div><div class="cap"><div class="no">03</div><h3 class="muted">Decides</h3><p>Pactovio checks every gate, maps requirements to your evidence, strikes claims it can't support and drafts the answer. You approve; it never sends on its own.</p></div></div>
+  </div>
+</div></section>
+
+<section class="l-sec"><div class="container reliable">
+  <div><h2 class="stackh"><span>Reliable verdicts.</span><span class="g">For every bid.</span></h2><ol class="numlist" id="caps"></ol></div>
+  <div class="card ans reveal" id="ans" aria-live="polite"></div>
+</div></section>
+
+<section class="l-sec"><div class="container">
+  <h2 class="stackh reveal" style="max-width:560px"><span>Sourced answers, guarded claims, and an agent that never sleeps</span></h2>
+  <div class="bento">
+    <div class="b reveal"><div class="viz mini">
+      <div class="mini-row"><span class="mk" style="background:#EA4335">G</span><span class="sp">Request for quote: sensors</span><span class="chip info">RFQ</span></div>
+      <div class="mini-row"><span class="mk" style="background:#EA4335">G</span><span class="sp">Berth kiosk monitoring</span><span class="chip accent">Design</span></div>
+      <div class="mini-row"><span class="mk" style="background:#EA4335">G</span><span class="sp">Welcome to your trial</span><span class="chip">Ignored</span></div>
+      <div class="mini-row"><span class="mk" style="background:#EA4335">G</span><span class="sp">Clarification response no. 4</span><span class="chip info">RFP</span></div>
+      <div class="mini-row"><span class="mk" style="background:#EA4335">G</span><span class="sp">Monthly vendor newsletter</span><span class="chip">Ignored</span></div>
+    </div><div class="t">Every email, triaged</div><div class="d">Nemotron Lightning classifies each new message in seconds.</div></div>
+    <div class="b reveal"><div class="viz"><div class="digits"><span>1</span><span>0</span><span class="on">/</span><span>1</span><span>0</span></div><div class="xs muted" style="text-align:center;margin-top:14px">red-team claims caught</div></div><div class="t">Guarded claims</div><div class="d">A NeMo Guardrails audit checks drafted answers against your evidence.</div></div>
+    <div class="b wide reveal"><div class="viz mini" style="padding:18px 20px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px"><div><div class="xs muted">Teagasc web applications · Lot 1</div><div class="verdict-big" style="margin-top:6px">43<span class="muted" style="font-size:18px">/100</span></div></div><span class="chip warn"><span class="dot"></span>Bid with conditions</span></div>
+      <div style="margin-top:14px"><div class="gate"><span>ISO 27001 and ISO 9001 certificates</span><span class="chip ok">Met</span></div><div class="gate"><span>Public liability €6.5M, profile holds €6.0M</span><span class="chip warn">Arrange after award</span></div><div class="gate" style="border:0"><span>20 working-day take-on, precedent 6 weeks</span><span class="chip bad">Gap</span></div></div>
+    </div><div class="t">A verdict you can defend</div><div class="d">Every gate is decided in code from your profile, with the page in the pack that set it.</div></div>
+    <div class="b half reveal"><div class="viz mini" style="margin-right:-40px">
+      <div class="mini-row"><span class="mk" style="background:#EA4335">G</span><b style="font-weight:510;width:120px">Gmail</b><span class="sp muted">Synced 1 min ago</span><span class="muted">3 new requests</span></div>
+      <div class="mini-row"><span class="mk" style="background:#4A154B">S</span><b style="font-weight:510;width:120px">Slack</b><span class="sp muted">Synced 2 min ago</span><span class="muted">2 approvals</span></div>
+      <div class="mini-row" style="opacity:.45"><span class="mk" style="background:#00A1E0">S</span><b style="font-weight:510;width:120px">Salesforce</b><span class="sp muted">Synced 4 min ago</span><span class="muted">1 opportunity</span></div>
+    </div><div class="t">Works where your team works</div><div class="d">Deals in your CRM, tasks in Jira, quotes in Drive, deadlines on your calendar.</div></div>
+    <div class="b half reveal"><div class="viz mini" style="padding:18px 20px;margin-bottom:-40px"><div class="h4" style="font-size:16px">Morning digest</div><p class="small" style="margin:8px 0 0">New tenders that fit your profile, requests waiting for a quote, clarification deadlines this week, and anything the agent needs you to approve.</p><p class="small muted" style="margin:8px 0 0">Skip notices below a fit of 50 unless the buyer is already a customer.</p></div><div class="t">An agent that never sleeps</div><div class="d">It watches every source around the clock and messages you when something needs a decision.</div></div>
+  </div>
+</div></section>
+
+<section class="l-sec"><div class="container">
+  <h2 class="stackh reveal"><span>Built on NVIDIA Nemotron.</span><span class="g">Served by Nebius Token Factory.</span></h2>
+  <div class="tiles" id="models"></div>
+  
+</div></section>
+
+<section class="l-sec"><div class="container">
+  <h2 class="stackh reveal"><span>Measured, not promised.</span><span class="g">Every number has a run behind it.</span></h2>
+  <div class="stats reveal">
+    <div class="st"><div class="v">$1.23</div><div class="k">per pack read, end to end</div><div class="src mono">run_01m666zkm8bfepyakwpd6q0a52 · $1.228</div></div>
+    <div class="st"><div class="v">24 s</div><div class="k">from a Gmail message to a classified intake</div><div class="src mono">connector e2e · 30 Oct 2026</div></div>
+    <div class="st"><div class="v">8 / 15</div><div class="k">connectors tested live against real accounts</div><div class="src mono">connector-e2e · 9 checks passed, 0 failed</div></div>
+    <div class="st"><div class="v">10 / 10</div><div class="k">red-team claims caught by NeMo Guardrails</div><div class="src mono">pactovio-audit job on Nebius</div></div>
+  </div>
+</div></section>
+
+<section class="l-sec" id="connectors"><div class="container">
+  <h2 class="stackh reveal"><span>Fifteen connectors, two per job.</span><span class="g">Eight tested live against real accounts.</span></h2>
+  <p class="l-sub">Pactovio connects through Composio managed auth. Email replies are saved as drafts and every outbound action waits for your confirm.</p>
+  <div class="logowall" id="logowall"></div>
+</div></section>
+
+<section class="l-sec"><div class="container">
+  <h2 class="stackh reveal"><span>Pactovio for agents</span></h2>
+  <p class="l-sub" style="margin-top:12px">Every tender, verdict and quote is a tool over MCP, so your own agents can ask Pactovio before they act.</p>
+  <div class="tiles" id="agents"></div>
+</div></section>
+
+<section class="l-sec"><div class="container">
+  <div class="trust-head"><h2 class="stackh"><span>Protected by design.</span><span class="g">Drafts by default.</span></h2><a href="/privacy">Read the privacy policy <span data-ico="out"></span></a></div>
+  <div class="trust">
+    <div class="reveal"><div class="ict" data-ico="lock"></div><h4>Replies are drafts</h4><p>Pactovio never sends email or submits a bid on its own. Outbound actions show up as a request you confirm or reject.</p></div>
+    <div class="reveal"><div class="ict" data-ico="evidence"></div><h4>Every claim is checked</h4><p>Sentences that can't be traced to your evidence are struck and flagged, and an independent guardrails audit re-checks the drafts.</p></div>
+    <div class="reveal"><div class="ict" data-ico="shield"></div><h4>Your data stays yours</h4><p>Each workspace's packs, evidence and connections are isolated, and your content is never used to train models.</p></div>
+  </div>
+</div></section>
+
+<section class="l-sec" id="pricing"><div class="container">
+  <h2 class="stackh reveal"><span>Pay for the reading,</span><span class="g">not the seats.</span></h2>
+  <div class="prices">
+    <div class="card price reveal"><div class="h4">Scout</div><div class="amt">$0 <small>/ month</small></div><ul><li><span data-ico="check"></span>3 small pack reads a month</li><li><span data-ico="check"></span>Sample workspaces</li><li><span data-ico="check"></span>Calendar feed</li></ul><a class="btn btn-secondary" href="/app">Start free</a></div>
+    <div class="card price pop reveal"><div class="h4">Team</div><div class="amt">$149 <small>/ month</small></div><ul><li><span data-ico="check"></span>150 credits a month</li><li><span data-ico="check"></span>Nightly scan</li><li><span data-ico="check"></span>Connectors and agent chat</li><li><span data-ico="check"></span>Webhooks</li></ul><a class="btn btn-primary" href="/pricing">Choose Team</a></div>
+    <div class="card price reveal"><div class="h4">Business</div><div class="amt">$449 <small>/ month</small></div><ul><li><span data-ico="check"></span>600 credits a month</li><li><span data-ico="check"></span>Audit jobs</li><li><span data-ico="check"></span>MCP and API keys</li><li><span data-ico="check"></span>Priority runs</li></ul><a class="btn btn-secondary" href="/pricing">Choose Business</a></div>
+  </div>
+  <p class="small muted" style="margin-top:14px">A pack read costs 1 to 4 credits by size. Extra credits: 100 for $40. Checkout by Dodo Payments. <a href="/pricing" style="text-decoration:underline;text-underline-offset:3px">Full pricing and FAQ</a></p>
+</div></section>
+
+<div class="container"><section class="teal cta" aria-label="Get started">
+  <span class="cloud" style="width:520px;height:260px;left:12%;top:20%"></span><span class="cloud" style="width:460px;height:240px;right:8%;top:34%;animation-delay:-5s"></span><span class="cloud" style="width:360px;height:200px;left:38%;bottom:-40px;animation-delay:-9s"></span>
+  <h2 class="h2">Bid on what you can win</h2>
+  <div class="chevs" aria-hidden="true"><span data-ico="down"></span><span data-ico="down" style="animation-delay:.15s"></span><span data-ico="down" style="animation-delay:.3s"></span><span data-ico="down" style="animation-delay:.45s"></span></div>
+  <div class="stack"><a class="btn btn-primary" href="/app">Try it live</a><a class="btn btn-secondary" href="https://github.com/BonneyMantra/pactovio" target="_blank" rel="noopener">Read the code</a></div>
+</section></div>
+</main>
+
+<footer class="l-foot"><div class="container in">
+  <div class="who"><span class="tile-o" data-ico="logo"></span><div><b>Pactovio</b><br />Built for the Nebius × NVIDIA hackathon 2026<br />© 2026 Pactovio. MIT licensed.</div></div>
+  <div><h5>Product</h5><ul><li><a href="/app">Open the app</a></li><li><a href="#how">How it works</a></li><li><a href="/pricing">Pricing</a></li></ul></div>
+  <div><h5>Legal</h5><ul><li><a href="/privacy">Privacy policy</a></li><li><a href="/terms">Terms of service</a></li></ul></div>
+  <div><h5>Code</h5><ul><li><a href="https://github.com/BonneyMantra/pactovio" target="_blank" rel="noopener">GitHub</a></li><li><a href="https://github.com/BonneyMantra/pactovio/blob/main/docs/API.md" target="_blank" rel="noopener">API reference</a></li></ul></div>
+</div></footer>
+<script type="module" src="/assets/landing.js"></script>
 </body>
 </html>
