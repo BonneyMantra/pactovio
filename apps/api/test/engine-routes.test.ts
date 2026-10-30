@@ -113,3 +113,21 @@ describe('evidence ingest', () => {
     expect(((await res.json()) as { code: string }).code).toBe('validation');
   });
 });
+
+describe('GET /runs/:id/stream (SSE)', () => {
+  it('replays landed steps as `step` events in order, then closes with `done` for a finished run, scoped to the workspace', async () => {
+    const wsRun = async (ws: string, id: string) => env.DB.prepare("INSERT INTO runs (id, workspace_id, subject_type, subject_id, kind, status, started_at, replay) VALUES (?, ?, 'tender', ?, 'pack_run', 'completed', ?, 1)").bind(id, ws, TEAGASC, new Date().toISOString()).run();
+    await wsRun('ws_harbour_digital', 'run_sse_1');
+    for (const [seq, purpose] of [[1, 'Load pack text'], [2, 'Whole-pack overview']] as const) {
+      await env.DB.prepare("INSERT INTO run_steps (id, run_id, seq, at, purpose, model, status, tokens_in, tokens_out, tokens_cached, ms, cost_usd) VALUES (?, 'run_sse_1', ?, ?, ?, NULL, 'ok', 1, 1, 0, 5, 0)").bind(`stp_sse_${seq}`, seq, new Date().toISOString(), purpose).run();
+    }
+    const res = await call('/api/runs/run_sse_1/stream');
+    expect(res.headers.get('content-type')).toContain('text/event-stream');
+    const text = await res.text();
+    const events = [...text.matchAll(/event: (\w+)\n/g)].map((m) => m[1]);
+    expect(events).toEqual(['step', 'step', 'done']);
+    expect(text.indexOf('Load pack text')).toBeLessThan(text.indexOf('Whole-pack overview'));
+    await wsRun('ws_kestrel_sensing', 'run_sse_other');
+    expect((await call('/api/runs/run_sse_other/stream')).status).toBe(404);
+  });
+});
