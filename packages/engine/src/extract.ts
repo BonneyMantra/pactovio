@@ -63,3 +63,22 @@ export function dedupeReqs(reqs: ExtractedReq[]): ExtractedReq[] {
   }
   return [...seen.values()];
 }
+
+const lotKey = (s: string | null): string | null => (s == null ? null : (/\d+/.exec(s)?.[0] ?? s.trim()));
+/** Cover the buyer lets the tenderer arrange after award: "holds, or will hold should they be successful", "required to hold for the term". */
+export const AFTER_AWARD = /(?:will hold[^.]{0,60}successful|shall be required to hold|required to hold for the term|hold(?:s)?,? or will hold)/i;
+
+/**
+ * Clean the model's overview: lot numbers are digits only ("Lot 1" -> "1"), per-lot copies of a gate that already
+ * applies to every lot are dropped, and insurance gates are remediable when the pack text says cover may be arranged
+ * after award (decided from the text by a rule, not left to the model).
+ */
+export function normaliseOverview(o: Overview, packText: string): Overview {
+  const lots = o.lots.map((l) => ({ ...l, lot_no: lotKey(l.lot_no) ?? l.lot_no }));
+  const all = o.gates.map((g) => ({ ...g, lot: lotKey(g.lot) }));
+  const afterAward = AFTER_AWARD.test(packText);
+  const gates = all
+    .filter((g, i) => g.lot === null || !all.some((h, j) => j !== i && h.lot === null && h.ref === g.ref && h.kind === g.kind))
+    .map((g) => (g.kind === 'insurance' && afterAward ? { ...g, remediable: true } : g));
+  return { ...o, lots, gates };
+}

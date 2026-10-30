@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { CompanyProfile } from '@pactovio/contracts';
 import { checkCertification, checkInsurance, checkReferences, checkTurnover, evaluateGate } from '../src/gates';
+import { normaliseOverview } from '../src/extract';
 import type { GateSpec } from '../src/schemas';
 import { coverageScore, decide } from '../src/matrix-rules';
 
@@ -96,5 +97,18 @@ describe('bid decision rules', () => {
   it('coverage score weights scored criteria by their award weight', () => {
     expect(coverageScore([req('MET', 'scored', 30), req('GAP', 'scored', 10)])).toBe(75);
     expect(coverageScore([])).toBe(0);
+  });
+});
+
+describe('overview clean-up', () => {
+  const g = (o: Partial<GateSpec>): GateSpec => ({ lot: null, ref: 'A7', kind: 'references', text: 't', min_turnover_eur: null, turnover_basis: null, years: null, insurance_type: null, min_cover_eur: null, certification: null, min_references: 2, remediable: false, doc: 'd', page: 1, ...o });
+  const base = { title: 't', buyer: 'b', procedure: null, submission_deadline: null, deadlines: [], clarifications: [], forms: [] };
+  it('turns "Lot 1" into "1", drops per-lot copies of an all-lots gate, and marks insurance remediable from the pack wording', () => {
+    const o = normaliseOverview({ ...base, lots: [{ lot_no: 'Lot 1', title: 'a', value_eur: null, response_form_doc: null }], gates: [g({}), g({ lot: 'Lot 1' }), g({ ref: 'A4', kind: 'insurance', insurance_type: 'public_liability', min_cover_eur: 6_500_000 })] }, 'The Candidate holds, or will hold should they be successful, the following insurances');
+    expect(o.lots[0]!.lot_no).toBe('1');
+    expect(o.gates.map((x) => `${x.ref}:${x.lot}`)).toEqual(['A7:null', 'A4:null']);
+    expect(o.gates[1]!.remediable).toBe(true);
+    const strict = normaliseOverview({ ...base, lots: [], gates: [g({ ref: 'A4', kind: 'insurance' })] }, 'Cover must be in place at submission.');
+    expect(strict.gates[0]!.remediable).toBe(false);
   });
 });

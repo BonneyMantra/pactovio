@@ -1,7 +1,7 @@
 import { HttpError, PackText, type CompanyProfile } from '@pactovio/contracts';
 import { emit } from '@pactovio/events';
 import { normRef } from './docx-fill';
-import { dedupeReqs, extractLot, extractOverview } from './extract';
+import { dedupeReqs, extractLot, extractOverview, normaliseOverview } from './extract';
 import { evaluateGates, type GateResult } from './gates';
 import { draftAnswersImpl } from './draft';
 import { matchEvidence, persistRequirements } from './match';
@@ -75,7 +75,8 @@ export async function runPackPipeline(rc: RunCtx, step: Stepper): Promise<void> 
   // 3. Whole-pack reads: overview first (seeds the prompt cache), then one call per lot in parallel
   const overview = await step('overview', async (): Promise<Overview> => {
     const { text } = await block();
-    const { data } = await extractOverview({ env, pack: text, onStep, fetch: rc.fetch });
+    const raw = await extractOverview({ env, pack: text, onStep, fetch: rc.fetch });
+    const data = normaliseOverview(raw.data, text);
     await putJson(rc, 'overview.json', data);
     await env.DB.prepare("UPDATE tenders SET raw_json = json_set(COALESCE(raw_json, '{}'), '$.key_dates', json(?), '$.engine', json(?)) WHERE id = ?")
       .bind(JSON.stringify(data.deadlines.map((d) => ({ label: d.label, at: d.at }))), JSON.stringify({ run_id: rc.runId, forms: data.forms, clarifications: data.clarifications }), rc.tenderId).run();
