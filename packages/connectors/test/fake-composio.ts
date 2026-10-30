@@ -28,7 +28,7 @@ export function fakeComposio(handlers: Record<string, Handler> = {}, opts: { fai
       return json({ data: handlers[tool]?.(body!.arguments) ?? {}, error: null, successful: true, log_id: 'log_test' });
     }
     if (method === 'POST' && path === '/files/upload/request') return json({ id: 'req_file_1', key: `projects/pr_1/requests/${body!.toolkit_slug}/${body!.filename}`, new_presigned_url: `https://s3.fake/${body!.filename}`, metadata: { storage_backend: 's3' } });
-    if (method === 'GET' && path === '/auth_configs') return json({ items: [{ id: 'ac_probity', name: 'probity-xero', status: 'ENABLED' }] });
+    if (method === 'GET' && path === '/auth_configs') return json({ items: [{ id: 'ac_other', name: 'other-product-xero', status: 'ENABLED' }] });
     if (method === 'POST' && path === '/auth_configs') return json({ toolkit: { slug: body!.toolkit.slug }, auth_config: { id: `ac_${body!.toolkit.slug}`, is_composio_managed: true } }, 201);
     if (method === 'POST' && path === '/connected_accounts/link') return json({ link_token: 'lk_1', redirect_url: 'https://connect.composio.dev/link/lk_1', expires_at: '2026-10-30T05:00:00Z', connected_account_id: `ca_new_${body!.auth_config_id}` });
     if (method === 'GET' && path === '/connected_accounts') return json({ items: opts.accounts ?? [], next_cursor: null });

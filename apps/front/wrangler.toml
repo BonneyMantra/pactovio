@@ -8,7 +8,7 @@ compatibility_flags = ["nodejs_compat"]
 binding = "API"
 service = "pactovio-api"
 
-# WEB is OPTIONAL until Gabriel's UI Worker exists. While unbound, _worker.js falls back to API
+# WEB is OPTIONAL until a separate UI Worker exists. While unbound, _worker.js falls back to API
 # for every path. Uncomment once `pactovio-web` is deployed.
 # [[services]]
 # binding = "WEB"

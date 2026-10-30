@@ -4,7 +4,7 @@ import { DEFAULT_RULES, EVENT_ACTIONS, PROVIDER_ACTIONS, PROVIDERS, effectiveRul
 import schemas from './fixtures/tool-schemas.json';
 
 describe('catalogue', () => {
-  it('is exactly the 15 connectors Gabriel chose, two per category (one signing)', () => {
+  it('is exactly the 15 chosen connectors, two per category (one signing)', () => {
     expect(PROVIDERS.map((p) => p.provider).sort()).toEqual(['asana', 'dropbox', 'docusign', 'gmail', 'googlecalendar', 'googledrive', 'hubspot', 'jira', 'microsoft_teams', 'outlook', 'outlook_calendar', 'quickbooks', 'salesforce', 'slack', 'xero'].sort());
     const count = (c: string) => PROVIDERS.filter((p) => p.category === c).length;
     for (const c of ['email', 'chat', 'crm', 'storage', 'calendar', 'tasks', 'accounting']) expect(count(c), c).toBe(2);

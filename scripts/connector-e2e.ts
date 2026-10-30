@@ -40,7 +40,7 @@ const CONNECT_STEPS: Record<string, string> = {
   asana: 'Connect Asana (free workspace).',
   docusign: 'NEEDS OUR OWN OAUTH APP: create a DocuSign developer-sandbox app (integration key + secret, redirect URI https://backend.composio.dev/api/v1/auth-apps/add), run scripts/connector-setup.ts docusign, then connect.',
   quickbooks: 'Connect a QuickBooks sandbox company.',
-  xero: 'NEEDS OUR OWN OAUTH APP: register a Xero app, run scripts/connector-setup.ts xero (or reuse the existing probity-xero auth config with Gabriel\'s OK), then connect the Xero demo company.',
+  xero: 'NEEDS OUR OWN OAUTH APP: register a Xero app, run scripts/connector-setup.ts xero, then connect the Xero demo company.',
 };
 
 const args = process.argv.slice(2);

@@ -82,7 +82,7 @@ export const PROVIDERS: ProviderSpec[] = [
     whatItDoes: 'Creates the customer (if new) and an estimate in QuickBooks from an approved Pactovio quote.',
     actions: ['create_estimate'] },
   { provider: 'xero', toolkit: 'xero', name: 'Xero', category: 'accounting', managedAuth: false,
-    ownApp: 'Register a Xero OAuth 2.0 app (client id + secret, redirect URI https://backend.composio.dev/api/v1/auth-apps/add). Composio fields: client_id, client_secret. The Composio account already holds an auth config "probity-xero" belonging to another product; Pactovio does not reuse it unless told to.',
+    ownApp: 'Register a Xero OAuth 2.0 app (client id + secret, redirect URI https://backend.composio.dev/api/v1/auth-apps/add). Composio fields: client_id, client_secret.',
     description: 'Contact and quote from an approved Pactovio quote.',
     whatItDoes: 'Creates the contact (if new) and a quote in Xero from an approved Pactovio quote.',
     actions: ['create_estimate'] },

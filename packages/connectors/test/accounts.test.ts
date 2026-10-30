@@ -23,7 +23,7 @@ describe('catalogue status', () => {
     expect(by.microsoft_teams!.setup_note).toMatch(/work or school/);
     expect(by.docusign).toMatchObject({ status: 'available', managed_auth: false });
     expect(by.docusign!.setup_note).toContain('client_id');
-    expect(by.xero!.setup_note).toContain('probity-xero');
+    expect(by.xero!.setup_note).toContain('client_secret');
     expect(by.gmail).toMatchObject({ status: 'available', toolkit: 'gmail', managed_auth: true, setup_note: null });
     expect(by.hubspot!.rules).toEqual([expect.objectContaining({ event: 'verdict.ready', action: 'sync_bid', enabled: true })]);
   });
