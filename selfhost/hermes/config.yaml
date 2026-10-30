@@ -1,0 +1,31 @@
+# Hermes profile "pactovio" (self-host desk agent). Secrets are never written here:
+# NEBIUS_API_KEY and PACTOVIO_API_KEY are env vars that OpenShell fills with placeholders and the sandbox proxy
+# swaps for the real value only on requests to the bound hosts.
+model:
+  default: nvidia/Nemotron-3.5-Super-VL
+  provider: nebius
+providers:
+  nebius:
+    name: nebius
+    base_url: https://api.tokenfactory.nebius.com/v1/
+    key_env: NEBIUS_API_KEY
+    api_mode: chat_completions
+    model: nvidia/Nemotron-3.5-Super-VL
+mcp_servers:
+  pactovio:
+    url: ${PACTOVIO_APP_URL}/mcp
+    headers:
+      Authorization: Bearer ${PACTOVIO_API_KEY}
+    timeout: 60
+    connect_timeout: 20
+terminal:
+  backend: local
+  cwd: /sandbox
+  timeout: 60
+platform_toolsets:
+  cli: [web, file, todo, memory, skills]
+  slack: [web, file, todo, memory, skills, messaging]
+agent:
+  max_turns: 12
+display:
+  tool_progress: "off"

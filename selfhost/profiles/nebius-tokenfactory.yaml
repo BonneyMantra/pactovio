@@ -1,0 +1,13 @@
+# OpenShell provider profile: Nebius Token Factory API key. Endpointless on purpose: policy.yaml names the one
+# endpoint (api.tokenfactory.nebius.com:443) and binds this provider to it, so the key can reach nothing else.
+id: nebius-tokenfactory
+display_name: Nebius Token Factory
+description: OpenAI-compatible Nemotron inference on Nebius Token Factory
+category: inference
+credentials:
+  - name: api_key
+    description: Nebius Token Factory API key
+    env_vars: [NEBIUS_API_KEY]
+    required: true
+    auth_style: bearer
+    header_name: authorization

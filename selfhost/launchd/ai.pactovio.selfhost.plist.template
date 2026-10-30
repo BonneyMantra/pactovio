@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Pactovio desk agent: ensures the OpenShell gateway, providers and the 'pactovio' sandbox are up at login.
+     The sandbox itself restarts its bridge (restart policy: always). Render and load:
+       sed "s#__SELFHOST_DIR__#$PWD#g; s#__HOME__#$HOME#g" launchd/ai.pactovio.selfhost.plist.template \
+         > ~/Library/LaunchAgents/ai.pactovio.selfhost.plist
+       launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/ai.pactovio.selfhost.plist
+     Stop: launchctl bootout gui/$(id -u)/ai.pactovio.selfhost && selfhost/bin/down.sh -->
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>ai.pactovio.selfhost</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/sh</string>
+    <string>__SELFHOST_DIR__/bin/up.sh</string>
+  </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key><string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:__HOME__/.local/bin</string>
+    <key>HOME</key><string>__HOME__</string>
+    <key>DOCKER_HOST</key><string>unix://__HOME__/.colima/default/docker.sock</string>
+  </dict>
+  <key>RunAtLoad</key><true/>
+  <!-- up.sh is idempotent and exits once the sandbox exists; re-run every 10 minutes and after wake to heal it. -->
+  <key>StartInterval</key><integer>600</integer>
+  <key>WorkingDirectory</key><string>__SELFHOST_DIR__</string>
+  <key>StandardOutPath</key><string>__SELFHOST_DIR__/.state/launchd.out.log</string>
+  <key>StandardErrorPath</key><string>__SELFHOST_DIR__/.state/launchd.err.log</string>
+</dict>
+</plist>

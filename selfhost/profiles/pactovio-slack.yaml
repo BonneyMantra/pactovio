@@ -1,0 +1,20 @@
+# OpenShell provider profile: Slack bot (xoxb-) and Socket Mode app-level (xapp-) tokens for the Hermes gateway.
+# Endpointless; the slack network rule in policy.yaml carries no binding, so up.sh adds the binding via a policy
+# overlay only when Slack tokens exist (see docs/SELF-HOST.md).
+id: pactovio-slack
+display_name: Slack (Pactovio desk agent)
+description: Slack bot and Socket Mode tokens
+category: messaging
+credentials:
+  - name: bot_token
+    description: Slack bot token (xoxb-...)
+    env_vars: [SLACK_BOT_TOKEN]
+    required: true
+    auth_style: bearer
+    header_name: authorization
+  - name: app_token
+    description: Slack app-level token (xapp-..., connections:write)
+    env_vars: [SLACK_APP_TOKEN]
+    required: true
+    auth_style: bearer
+    header_name: authorization

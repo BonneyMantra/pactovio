@@ -1,0 +1,13 @@
+# OpenShell provider profile: Pactovio API key (pk_...) for /mcp and /v1/agent/events. Endpointless; policy.yaml
+# binds it to the Pactovio hosts only.
+id: pactovio-api
+display_name: Pactovio API
+description: Pactovio MCP server and agent event stream
+category: other
+credentials:
+  - name: api_key
+    description: Pactovio API key (pk_...)
+    env_vars: [PACTOVIO_API_KEY]
+    required: true
+    auth_style: bearer
+    header_name: authorization
