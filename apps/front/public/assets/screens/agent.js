@@ -52,7 +52,7 @@ export async function render(root, _p, ctx) {
     const t = state.threads.find((x) => x.id === id);
     title.textContent = id === 'thr_inbox' ? 'Inbox' : (t?.title || 'New conversation');
     sub.textContent = id === 'thr_inbox' ? 'Proactive messages from tenders, email and runs. Cards wait for your decision.' : 'Private to this session';
-    headRight.replaceChildren(id === 'thr_inbox' ? h('button.btn.btn-secondary.btn-sm', { onclick: runDigest }, icon('clock', 14), 'Run digest') : null);
+    headRight.replaceChildren(...(id === 'thr_inbox' ? [h('button.btn.btn-secondary.btn-sm', { onclick: runDigest }, icon('clock', 14), 'Run digest')] : []));
     chips.style.display = id === 'thr_inbox' ? 'none' : '';
     feed.replaceChildren(skeleton(4));
     try {

@@ -33,6 +33,7 @@ export async function render(root, { id }, ctx) {
   const fetchIt = async () => (d = await api(`/intakes/${encodeURIComponent(id)}`));
   try { await fetchIt(); } catch (e) { root.replaceChildren(errorBox(e)); return; }
   let timer = null;
+  let polls = 0;
   const draw = async () => {
     const it = d.intake || {};
     const cls = it.classification || {};
@@ -59,7 +60,9 @@ export async function render(root, { id }, ctx) {
           h('div', next))),
     );
     clearTimeout(timer);
-    if (it.status === 'processing' || it.status === 'received') timer = setTimeout(async () => { try { await fetchIt(); draw(); } catch { /* retry next tick */ } }, 4000);
+    // Keep refreshing while the intake is still being classified or routed (capped at about 3 minutes).
+    const pending = ['new', 'received', 'processing'].includes(it.status || 'new') || cls.confidence == null;
+    if (pending && polls++ < 45) timer = setTimeout(async () => { try { await fetchIt(); draw(); } catch { /* retry next tick */ } }, 4000);
   };
   await draw();
   return () => clearTimeout(timer);
