@@ -81,3 +81,17 @@ describe('extraction helpers', () => {
     expect(docIdFor(docs, 'other.pdf')).toBeNull();
   });
 });
+
+describe('sections that are gates or form boilerplate are not re-read', () => {
+  it('skips listed gate refs and tenderer-summary sections, reads the rest', async () => {
+    const read: string[] = [];
+    const fake = (async (_u: string | URL | Request, init?: RequestInit) => {
+      const b = JSON.parse(String(init?.body)) as Body;
+      if (b.response_format?.json_schema.name === 'lot_sections') return reply(b.model, { sections: [{ prefix: 'A1.1', title: 'Tenderer summary' }, { prefix: 'A2', title: 'Financial' }, { prefix: 'A4', title: 'Insurances' }, { prefix: 'A6', title: 'Technical requirements' }, { prefix: 'B1', title: 'Method statement' }] });
+      read.push(/starts with "([^"]+)"/.exec(b.messages.at(-1)!.content)![1]!);
+      return reply(b.model, { requirements: [], has_more: false });
+    }) as typeof fetch;
+    await extractLot({ env: { NEBIUS_API_KEY: 'k' } as never, pack: 'P', fetch: fake }, { lot_no: '1', title: 'x', response_form_doc: null }, ['A2', 'A4']);
+    expect(read.sort()).toEqual(['A6', 'B1']);
+  });
+});

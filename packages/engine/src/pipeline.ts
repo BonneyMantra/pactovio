@@ -86,7 +86,9 @@ export async function runPackPipeline(rc: RunCtx, step: Stepper): Promise<void> 
   const lots = overview.lots.length ? overview.lots : [{ lot_no: '1', title: 'All requirements', value_eur: null, response_form_doc: null }];
   const perLot = await Promise.all(lots.map((l) => step(`extract-lot-${l.lot_no}`, async (): Promise<ExtractedReq[]> => {
     const { text } = await block();
-    const data = await extractLot({ env, pack: text, onStep, fetch: rc.fetch }, l);
+    const gateLead = (r: string) => /^[A-Za-z]+\.?\d+(?:\.\d+)*/.exec(r.trim())?.[0] ?? r;
+    const skipRefs = ['A1', 'A1.1', 'A1.2', ...overview.gates.filter((g) => g.kind !== 'other').map((g) => gateLead(g.ref))];
+    const data = await extractLot({ env, pack: text, onStep, fetch: rc.fetch }, l, skipRefs);
     // the selection criteria (A2, A4 ...) are checked as gates; drop the copies the form tables repeat per lot
     const gateRefs = new Set(overview.gates.map((g) => normRef(/^[A-Za-z]+\.?\d+(?:\.\d+)*/.exec(g.ref.trim())?.[0] ?? g.ref)));
     const reqs = dedupeReqs(data.requirements).filter((r) => !gateRefs.has(normRef(r.ref)));

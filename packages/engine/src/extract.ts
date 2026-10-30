@@ -44,14 +44,18 @@ const LOT_RULES = `- kind: "mandatory" = must / M / pass-fail; "scored" = weight
  * section on its own, in pages (lot-pages.ts), so no single answer is long enough to hit the output limit and a
  * section's references stay in order for the continuation.
  */
-export async function extractLot(c: Common, lot: { lot_no: string; title: string; response_form_doc: string | null }): Promise<{ requirements: ExtractedReq[] }> {
+export async function extractLot(c: Common, lot: { lot_no: string; title: string; response_form_doc: string | null }, skipRefs: string[] = []): Promise<{ requirements: ExtractedReq[] }> {
   const form = lot.response_form_doc ? `Its response form is "${lot.response_form_doc}".` : '';
   const head = `LOT ${lot.lot_no} (${lot.title}). ${form}\nSources: the Requirements and Specifications document, the lot's response form tables (Ref No., Requirements, Mandatory/Desirable, compliance, comments), and the award criteria in the call for tender.`;
   const sec = await chatJSON(LotSections, {
     env: c.env, role: 'reason', purpose: `Whole-pack extraction: Lot ${lot.lot_no} sections`, schemaName: 'lot_sections', maxTokens: 3000, onStep: c.onStep, fetch: c.fetch, extra: NO_THINK,
     messages: messages(c.pack, `${head}\nList the top-level sections that contain requirements for this lot, in document order: the reference prefix exactly as printed in the Ref column (for example "A.6", "B1", "B2", "B3", "B4") and a short title. One entry per prefix; no sub-sections.`),
   });
-  const prefixes = sec.data.sections.map((s) => s.prefix).filter(Boolean);
+  // sections already checked as gates (financial, insurance, references, tax) and form-filling boilerplate are not re-read
+  const skip = new Set(skipRefs.map((r) => r.toLowerCase().replace(/[^a-z0-9]/g, '')));
+  const prefixes = sec.data.sections
+    .filter((s) => s.prefix && !skip.has(s.prefix.toLowerCase().replace(/[^a-z0-9]/g, '')) && !/summary|company information|sub-?contractor details|tenderer details/i.test(s.title))
+    .map((s) => s.prefix);
   const tasks = prefixes.length
     ? prefixes.map((p) => ({ tag: p, scope: `Only requirements whose reference starts with "${p}".` }))
     : [{ tag: 'all', scope: 'All requirements of the lot.' }];
