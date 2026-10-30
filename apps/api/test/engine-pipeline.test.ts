@@ -62,7 +62,7 @@ const fakeFetch = (async (url: string | URL | Request, init?: RequestInit) => {
   calls.push({ kind: schema ?? 'text', model: body.model });
   const cached = calls.filter((c) => c.model.includes('Ultra')).length > 1 ? 40_000 : 0;
   if (schema === 'overview') return completion(body.model, JSON.stringify(OVERVIEW));
-  if (schema === 'lot_requirements') return completion(body.model, JSON.stringify({ requirements: LOTS[/LOT (\d)/.exec(user)![1]!] }), { prompt_tokens: 50_000, completion_tokens: 2000, prompt_tokens_details: { cached_tokens: cached } });
+  if (schema === 'lot_requirements') return completion(body.model, JSON.stringify({ requirements: /CONTINUE/.test(user) ? [] : LOTS[/LOT (\d)/.exec(user)![1]!], has_more: false }), { prompt_tokens: 50_000, completion_tokens: 2000, prompt_tokens_details: { cached_tokens: cached } });
   if (schema === 'judgements') {
     const items = [...user.matchAll(/\[(\d+)\] REQUIREMENT: ([^\n]*)\nEVIDENCE:\n((?:- [^\n]*\n?)*)/g)];
     return completion(body.model, JSON.stringify({ judgements: items.map((m) => {

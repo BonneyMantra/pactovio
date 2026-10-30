@@ -29,22 +29,39 @@ export async function extractOverview(c: Common) {
   });
 }
 
-export async function extractLot(c: Common, lot: { lot_no: string; title: string; response_form_doc: string | null }) {
+const PAGE = 60;
+const MAX_PAGES = 6;
+
+/**
+ * Requirements of one lot, in pages of up to 60 in document order. One long answer used to hit the output limit and
+ * come back truncated; each page restarts after the last reference returned, with the pack prefix cached.
+ */
+export async function extractLot(c: Common, lot: { lot_no: string; title: string; response_form_doc: string | null }): Promise<{ requirements: ExtractedReq[] }> {
   const form = lot.response_form_doc ? `Its response form is "${lot.response_form_doc}".` : '';
-  const task = `Extract EVERY requirement for LOT ${lot.lot_no} (${lot.title}). ${form}
+  const base = `Extract the requirements for LOT ${lot.lot_no} (${lot.title}). ${form}
 Sources: the Requirements and Specifications document, the lot's response form tables (Ref No., Requirements, Mandatory/Desirable, compliance, comments), and the award criteria in the call for tender.
-- kind: "mandatory" = must / M / pass-fail; "scored" = weighted award criterion or desirable (D) item that earns marks or a written method statement that is scored; "info" = context the tenderer need not answer.
+- kind: "mandatory" = must / M / pass-fail; "scored" = weighted award criterion or desirable (D) item that earns marks, or a written method statement that is scored; "info" = headings, form-completion instructions and background that need no response.
 - weight: percentage of the award marks the criterion carries when stated, else null.
 - needs_response: true ONLY when the tenderer writes a narrative answer in a free-text box. False for price and cost tables, rate cards, yes/no confirmations, CV and staff tables.
-- kind "info" covers headings, instructions on how to complete the form, and background that needs no response from the tenderer.
 - word_limit: only when stated for that item.
+- text: the requirement as written, shortened to at most 60 words when longer (keep the reference exact).
 - Skip the pass/fail selection criteria themselves (A1 tenderer summary, A2 financial, A3 tax, A4 insurance, A5 health and safety, A6 technical ability as headings, A7 references), they are handled separately; DO include their numbered sub-requirements (A.6.1 and so on) and everything in Sections B. Skip requirements that belong to other lots.
 - Apply clarifications that change a requirement and cite them in note.
-Return every item, one entry per reference number, no summarising.`;
-  return chatJSON(LotRequirements, {
-    env: c.env, role: 'reason', purpose: `Whole-pack extraction: Lot ${lot.lot_no} requirements`, schemaName: 'lot_requirements',
-    messages: messages(c.pack, task), maxTokens: 30000, timeoutMs: 900_000, onStep: c.onStep, fetch: c.fetch, extra: NO_THINK,
-  });
+One entry per reference number, in the order they appear in the response form. Return at most ${PAGE} per answer and set has_more.`;
+  const out: ExtractedReq[] = [];
+  for (let page = 1; page <= MAX_PAGES; page++) {
+    const last = out.at(-1);
+    const task = last ? `${base}
+
+CONTINUE: you already returned ${out.length} requirements, the last one with ref "${last.ref}". Return the next ${PAGE} that come AFTER it, none of the earlier ones.` : base;
+    const { data } = await chatJSON(LotRequirements, {
+      env: c.env, role: 'reason', purpose: `Whole-pack extraction: Lot ${lot.lot_no} requirements${page > 1 ? ` (page ${page})` : ''}`, schemaName: 'lot_requirements',
+      messages: messages(c.pack, task), maxTokens: 24000, timeoutMs: 900_000, onStep: c.onStep, fetch: c.fetch, extra: NO_THINK,
+    });
+    out.push(...data.requirements);
+    if (!data.has_more || !data.requirements.length) break;
+  }
+  return { requirements: out };
 }
 
 /** Resolve the filename the model cited to a document id; unknown names map to null. */

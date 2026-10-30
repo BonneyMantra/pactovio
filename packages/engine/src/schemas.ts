@@ -47,7 +47,10 @@ export const ExtractedReq = z.object({
   note: z.string().nullable().describe('Clarification that overrides or refines the requirement, e.g. "Clarification 3: ..."'),
 });
 export type ExtractedReq = z.infer<typeof ExtractedReq>;
-export const LotRequirements = z.object({ requirements: z.array(ExtractedReq) });
+export const LotRequirements = z.object({
+  requirements: z.array(ExtractedReq).max(60),
+  has_more: z.boolean().describe('True when more requirements of this lot remain after the last one returned'),
+});
 
 export const Coverage = z.enum(['covers', 'partial', 'contradicts', 'none']);
 export type Coverage = z.infer<typeof Coverage>;
