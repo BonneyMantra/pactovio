@@ -3,6 +3,7 @@ import type { Env } from '@pactovio/contracts/env';
 import { extractPack } from '@pactovio/pack';
 import { chat, type StepRecord } from '@pactovio/models';
 import type { ChatMessage } from '@pactovio/models';
+import { withVisionModel } from './vision';
 
 /** Fixture location for packs lane A has not extracted (built by scripts/build-fixture.ts). */
 export const packFixtureKey = (tenderId: string) => `fixtures/packtext/${tenderId}.json`;
@@ -36,10 +37,10 @@ export async function readImage(
   const data = b64(await obj.arrayBuffer());
   const prompt = `This image belongs to a tender pack (file: ${o.filename}). Transcribe the visible text and describe what it shows that a bidder must know: components and tiers, hosting and environments, technology stack, integrations and data flows, constraints. Plain bullet list, no preamble, every label exactly as printed.`;
   const msg = { role: 'user', content: [{ type: 'text', text: prompt }, { type: 'image_url', image_url: { url: `data:${mimeOf(o.r2Key)};base64,${data}` } }] } as unknown as ChatMessage;
-  const res = await chat({
-    env, role: 'agent', purpose: `Read image: ${o.filename}`, messages: [msg], maxTokens: 1800, onStep: o.onStep, fetch: o.fetch,
+  const res = await withVisionModel(env, (model) => chat({
+    env, role: 'agent', model, purpose: `Read image: ${o.filename}`, messages: [msg], maxTokens: 1800, onStep: o.onStep, fetch: o.fetch,
     extra: { chat_template_kwargs: { enable_thinking: false } },
-  });
+  }));
   return res.text;
 }
 

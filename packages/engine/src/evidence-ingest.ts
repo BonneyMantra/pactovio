@@ -4,6 +4,7 @@ import { chatJSON, type ChatMessage, type StepLogger } from '@pactovio/models';
 import { extractText, getDocumentProxy } from 'unpdf';
 import { docxBytesToPages } from './docx-text';
 import { ensureEmbeddings } from './retrieve';
+import { withVisionModel } from './vision';
 import { EvidenceRecord } from './schemas';
 
 const SYSTEM = 'You read a supplier document (certificate, insurance schedule, accounts, case study, policy) and record what a bid team needs. Copy issuer, scope, expiry and every figure exactly as printed. valid_to is the expiry date as YYYY-MM-DD or null. Output JSON only.';
@@ -44,10 +45,10 @@ export async function ingestEvidenceImpl(env: Env, i: IngestInput, o: IngestOpts
     if (text.trim().length < 40) throw new HttpError(400, 'No readable text in this file. Upload it as an image (PNG or JPG) so it can be read.', 'validation');
     msg = { role: 'user', content: `Record this document (file: ${i.filename}).\n\n${text.slice(0, 12_000)}` };
   }
-  const { data } = await chatJSON(EvidenceRecord, {
-    env, role: 'agent', purpose: `Read evidence: ${i.filename}`, schemaName: 'evidence_record', maxTokens: 1800, onStep: o.onStep, fetch: o.fetch,
+  const { data } = await withVisionModel(env, (model) => chatJSON(EvidenceRecord, {
+    env, role: 'agent', model, purpose: `Read evidence: ${i.filename}`, schemaName: 'evidence_record', maxTokens: 1800, onStep: o.onStep, fetch: o.fetch,
     messages: [{ role: 'system', content: SYSTEM }, msg], extra: { chat_template_kwargs: { enable_thinking: false } },
-  });
+  }));
   const body = [data.summary, text ? text.slice(0, 6000) : data.transcript].filter(Boolean).join('\n\n');
   await env.DB.prepare('INSERT INTO evidence (id, workspace_id, kind, title, issuer, scope, valid_to, r2_key, text, meta_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
     .bind(id, i.workspaceId, i.kind || data.kind, i.title || data.title, data.issuer, data.scope, i.validTo || data.valid_to, r2Key, body, JSON.stringify({ source: 'upload', filename: i.filename })).run();

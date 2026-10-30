@@ -62,7 +62,8 @@ export async function runPackPipeline(rc: RunCtx, step: Stepper): Promise<void> 
     // Only real image files go to the vision model. PDF image pages (r2Key is the PDF) are listed by the pack lane but cannot be sent as-is.
     const imgs = pack.docs.flatMap((d) => d.images.filter((i) => /\.(png|jpe?g|webp|gif)$/i.test(i.r2Key)).map((i) => ({ doc: d, ...i }))).slice(0, MAX_VISION_IMAGES);
     for (const i of imgs) {
-      const text = await readImage(env, { r2Key: i.r2Key, filename: i.doc.filename, onStep, fetch: rc.fetch });
+      // a drawing that cannot be read must not stop the bid: the failure is logged as a step and the run carries on
+      const text = await readImage(env, { r2Key: i.r2Key, filename: i.doc.filename, onStep, fetch: rc.fetch }).catch(() => '');
       if (text) vision[i.doc.docId] = `${vision[i.doc.docId] ?? ''}${text}\n`;
     }
     const block = buildPackBlock(pack, vision);
