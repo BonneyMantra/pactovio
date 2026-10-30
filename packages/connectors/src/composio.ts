@@ -34,7 +34,12 @@ export interface ConnectedAccountInfo {
 const str = (v: unknown): string | null => (typeof v === 'string' && v ? v : null);
 
 export class Composio {
-  constructor(private env: ComposioKeyEnv, private fetchImpl: typeof fetch = fetch) {}
+  private fetchImpl: typeof fetch;
+
+  /** The global `fetch` must be called unbound in Workers: storing it as a property would call it with `this` = this client. */
+  constructor(private env: ComposioKeyEnv, fetchImpl?: typeof fetch) {
+    this.fetchImpl = fetchImpl ?? ((input, init) => fetch(input, init));
+  }
 
   private key(): string {
     if (!this.env.COMPOSIO_API_KEY) throw new HttpError(500, 'COMPOSIO_API_KEY is not configured', 'internal');

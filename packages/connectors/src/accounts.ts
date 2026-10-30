@@ -154,6 +154,8 @@ export async function disconnectProvider(env: Env, workspaceId: string, provider
   const trigger = row.meta.config?.trigger as { id?: string } | undefined;
   const c = composioFor(env, deps);
   if (trigger?.id) await c.deleteTrigger(trigger.id).catch(() => undefined);
+  const pendingAccount = (row.meta.pending as { connected_account_id?: string } | undefined)?.connected_account_id;
+  if (pendingAccount) await c.deleteConnectedAccount(pendingAccount).catch(() => undefined); // an abandoned Connect Link
   const config = { ...(row.meta.config ?? {}) };
   delete config.trigger;
   await saveConnector(env, workspaceId, provider, { status: 'available', external_account_id: null, connected_at: null, meta: { composio_user_id: row.meta.composio_user_id, config, rules: row.meta.rules } });

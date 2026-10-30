@@ -78,6 +78,13 @@ describe('connect flow', () => {
 });
 
 describe('sync and disconnect', () => {
+  it('disconnecting an abandoned Connect Link removes the pending Composio account', async () => {
+    const f = fakeComposio();
+    await disconnectProvider(env, W, 'jira', { fetch: f.fetch }); // jira was left pending by the redirect test above
+    expect(f.log).toContain('DELETE /connected_accounts/ca_new_ac_jira');
+    expect(await getConnector(env, W, 'jira')).toMatchObject({ status: 'available' });
+  });
+
   it('adopts ACTIVE Composio accounts of the demo user, shares Outlook with its calendar, and registers the mailbox trigger', async () => {
     const f = fakeComposio({}, { accounts: [acct('ca_gm', 'gmail'), acct('ca_ol', 'outlook'), acct('ca_other', 'hubspot', 'ACTIVE', 'someone-else')] });
     await syncConnectors(env, 'ws_kestrel_sensing', { fetch: f.fetch }, true);

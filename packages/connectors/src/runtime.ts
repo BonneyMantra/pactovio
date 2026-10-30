@@ -9,7 +9,7 @@ import { mimeFor } from './util';
 
 export interface Deps { fetch?: typeof fetch; now?: () => Date }
 
-export const composioFor = (env: Env, deps: Deps = {}) => new Composio(env, deps.fetch ?? fetch);
+export const composioFor = (env: Env, deps: Deps = {}) => new Composio(env, deps.fetch);
 
 /** Build the context an action runs in. Exposed so scripts and tests can drive actions with a fake `exec`. */
 export function makeCtx(env: Env, row: ConnectorRow, deps: Deps = {}, over: Partial<ActionCtx> = {}): ActionCtx {
