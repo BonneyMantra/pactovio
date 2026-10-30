@@ -5,8 +5,8 @@
 #   scripts/start-audit-job.sh --delete   delete FINISHED jobs named pactovio-audit-* / pactovio-spike-*
 #   scripts/start-audit-job.sh --status <job_id>   print state only
 # DRY_RUN=1 validates the create request without creating anything.
-# Secrets: NEBIUS_API_KEY and INGEST_SECRET come from the environment, else from ENV_FILES (default
-# apps/api/.env.local and apps/api/.dev.vars). Values are never printed. APP_URL defaults to https://pactovio.pages.dev.
+# Secrets: NEBIUS_API_KEY and INGEST_SECRET come from the environment, else from ENV_FILES, later files win (default
+# apps/api/.dev.vars then apps/api/.env.local). Values are never printed. APP_URL defaults to https://pactovio.pages.dev.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 PROFILE="hackathon-jobs-sa"
@@ -50,18 +50,19 @@ if [ "$mode" = "spike" ]; then
         --container-command bash --args "-c '$CMD'")
 else
   name="pactovio-audit-$ts"
-  for f in ${ENV_FILES:-$ROOT/apps/api/.env.local $ROOT/apps/api/.dev.vars}; do
+  for f in ${ENV_FILES:-$ROOT/apps/api/.dev.vars $ROOT/apps/api/.env.local}; do
     [ -f "$f" ] && { set -a; source "$f"; set +a; }
   done
   : "${NEBIUS_API_KEY:?NEBIUS_API_KEY not set}"; : "${INGEST_SECRET:?INGEST_SECRET not set}"
   APP_URL="${APP_URL:-https://pactovio.pages.dev}"
   # Ship the job as one base64 env var (config + python, ~10 KB): no registry, no image build.
-  bundle="$(cd "$ROOT/jobs/audit" && tar czf - audit.py claims.py ours_actions.py redteam.py config | base64 | tr -d '\n')"
+  # COPYFILE_DISABLE and the exclude keep macOS AppleDouble files (._*) out of the bundle: they are not valid YAML and break Guardrails config loading.
+  bundle="$(cd "$ROOT/jobs/audit" && COPYFILE_DISABLE=1 tar --exclude='._*' --exclude='.DS_Store' -czf - audit.py claims.py ours_actions.py redteam.py config | base64 | tr -d '\n')"
   RUN='set -e; pip install -q --no-cache-dir nemoguardrails==0.24.1 pyyaml; mkdir -p /app; echo "$AUDIT_BUNDLE_B64" | base64 -d | tar xz -C /app; cd /app; python audit.py'
   args=(--name "$name" --image "$IMAGE" --platform "$PLATFORM" --preset "$PRESET" --disk-size 30Gi --timeout 1h
         --container-command bash --args "-c '$RUN'"
         --env "NEBIUS_API_KEY=$NEBIUS_API_KEY" --env "INGEST_SECRET=$INGEST_SECRET" --env "APP_URL=$APP_URL"
-        --env "AUDIT_BUNDLE_B64=$bundle")
+        --env "JOB_ID=$name" --env "AUDIT_BUNDLE_B64=$bundle")
 fi
 
 if [ "${DRY_RUN:-0}" = "1" ]; then "${NB[@]}" ai job create "${args[@]}" --dry-run; exit $?; fi
