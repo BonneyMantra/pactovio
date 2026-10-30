@@ -7,6 +7,7 @@ import { makeEnv } from './helpers';
 
 const HARBOUR = 'ws_harbour_digital';
 const TEAGASC = 'tnd_sample_teagasc_p4941';
+const BUNDLED = REPLAYS[TEAGASC]!;
 let env: Env;
 let dispose: () => Promise<void>;
 beforeAll(async () => ({ env, dispose } = await makeEnv()), 60_000);
@@ -71,4 +72,19 @@ describe('replay mode', () => {
       delete REPLAYS[TEAGASC];
     }
   }, 20_000);
+
+  it('the real bundled Teagasc recording restores into a fresh database: verdicts are re-pointed at the replay run (the recorded run id does not exist there)', async () => {
+    REPLAYS[TEAGASC] = { ...BUNDLED, steps: BUNDLED.steps.slice(0, 3) }; // real matrix, verdicts and drafts; a few steps so the paced replay stays quick
+    try {
+      const rc = await newRun();
+      await runReplay(rc, inlineStep);
+      const run = await env.DB.prepare('SELECT status FROM runs WHERE id = ?').bind(rc.runId).first<{ status: string }>();
+      expect(run!.status).toBe('completed');
+      const v = await env.DB.prepare('SELECT run_id FROM verdicts WHERE tender_id = ? AND workspace_id = ?').bind(TEAGASC, HARBOUR).all<{ run_id: string }>();
+      expect(v.results).toHaveLength(3);
+      expect(v.results.every((r) => r.run_id === rc.runId)).toBe(true);
+    } finally {
+      delete REPLAYS[TEAGASC];
+    }
+  }, 30_000);
 });

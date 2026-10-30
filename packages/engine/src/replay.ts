@@ -43,13 +43,15 @@ export async function findReplay(env: Env, workspaceId: string, tenderId: string
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-async function restore(env: Env, s: ReplaySnapshot): Promise<void> {
+/** `runId` is the replay run: recorded verdicts point at it (the recorded source run does not exist in a fresh database). */
+async function restore(env: Env, s: ReplaySnapshot, runId: string): Promise<void> {
   const w = await env.DB.prepare('SELECT profile_json FROM workspaces WHERE id = ?').bind(s.workspace_id).first<{ profile_json: string }>();
   if (w) await ensureProfileEvidence(env, s.workspace_id, JSON.parse(w.profile_json) as CompanyProfile);
   const stmts: D1PreparedStatement[] = [];
   for (const table of Object.values(TABLES)) stmts.push(env.DB.prepare(`DELETE FROM ${table} WHERE workspace_id = ? AND tender_id = ?${table === 'answers' ? " AND (status = 'draft' OR id LIKE 'ans_sample%')" : ''}`).bind(s.workspace_id, s.tender_id));
   for (const [key, table] of Object.entries(TABLES)) {
     for (const row of s[key as keyof typeof TABLES]) {
+      if (key === 'verdicts') row.run_id = runId;
       const cols = Object.keys(row);
       stmts.push(env.DB.prepare(`INSERT OR REPLACE INTO ${table} (${cols.join(',')}) VALUES (${cols.map(() => '?').join(',')})`).bind(...cols.map((c) => row[c] ?? null)));
     }
@@ -86,7 +88,7 @@ export async function runReplay(rc: RunCtx, step: Stepper): Promise<void> {
       return true;
     });
   }
-  if (snapshot) await step('restore', async () => { await restore(env, snapshot); return true; });
+  if (snapshot) await step('restore', async () => { await restore(env, snapshot, rc.runId); return true; });
   await step('finish', async () => {
     await env.DB.prepare("UPDATE runs SET status = 'completed', finished_at = ? WHERE id = ?").bind(nowIso(), rc.runId).run();
     await emit(env, rc.workspaceId, 'run.completed', { run_id: rc.runId, tender_id: rc.tenderId, status: 'completed', replay: true });
