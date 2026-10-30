@@ -1,6 +1,7 @@
 // Cloudflare Pages advanced-mode worker for https://pactovio.pages.dev
 // /api/*, /v1/*, /mcp*, /webhooks/*, /ics/*, /dev/* -> service binding API (pactovio-api)
-// everything else -> service binding WEB (pactovio-web, the UI) when bound, otherwise API.
+// everything else -> service binding WEB (pactovio-web, the UI) when bound, otherwise the static
+// placeholder pages in this folder (landing, privacy, terms) via ASSETS, otherwise API.
 const API_PATH = /^\/(api|v1|dev|webhooks|ics)(\/|$)|^\/mcp/;
 
 export function isApiPath(pathname) {
@@ -9,7 +10,7 @@ export function isApiPath(pathname) {
 
 export function pickTarget(pathname, env) {
   if (isApiPath(pathname)) return env.API;
-  return env.WEB ?? env.API;
+  return env.WEB ?? env.ASSETS ?? env.API;
 }
 
 export default {

@@ -22,6 +22,13 @@ describe('Pages _worker.js router', () => {
     const res = await worker.fetch(new Request('https://pactovio.pages.dev/'), env);
     expect(await res.text()).toBe('api');
   });
+  it('serves the static placeholder pages via ASSETS when WEB is unbound', () => {
+    const env = { API: svc('api'), ASSETS: svc('assets') };
+    expect(pickTarget('/', env).name).toBe('assets');
+    expect(pickTarget('/privacy', env).name).toBe('assets');
+    expect(pickTarget('/api/health', env).name).toBe('api');
+    expect(pickTarget('/', { ...env, WEB: svc('web') }).name).toBe('web');
+  });
   it('returns a JSON 502 when no API binding exists', async () => {
     const res = await worker.fetch(new Request('https://pactovio.pages.dev/api/health'), {});
     expect(res.status).toBe(502);
