@@ -22,4 +22,4 @@ export const refuse = (status: 400 | 403 | 404 | 409 | 429 | 502, error: string,
   throw new HttpError(status, error, code);
 };
 
-export const BASE_URL = (env: Env): string => (env as { PUBLIC_BASE_URL?: string }).PUBLIC_BASE_URL ?? 'https://pactovio.pages.dev';
+export const BASE_URL = (env: Env): string => ((env as { PUBLIC_ORIGIN?: string }).PUBLIC_ORIGIN ?? 'https://pactovio.pages.dev').replace(/\/$/, '');
