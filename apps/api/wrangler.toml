@@ -15,6 +15,7 @@ MODEL_AGENT = "nvidia/Nemotron-3.5-Super-VL"
 MODEL_FAST = "nvidia/Nemotron-3_5-Lightning"
 MODEL_EMBED = "Qwen/Qwen3-Embedding-8B"
 TOKEN_FACTORY_BASE_URL = "https://api.tokenfactory.nebius.com/v1/"
+PUBLIC_ORIGIN = "https://pactovio.pages.dev"
 
 [[d1_databases]]
 binding = "DB"

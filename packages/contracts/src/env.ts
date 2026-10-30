@@ -16,6 +16,8 @@ export interface Env {
   MODEL_FAST?: string;
   MODEL_EMBED?: string;
   TOKEN_FACTORY_BASE_URL?: string;
+  /** Public origin used to build approve/decline and OAuth callback links outside a request (queue consumer). */
+  PUBLIC_ORIGIN?: string;
   DODO_BRAND_ID?: string;
   DODO_API_BASE?: string;
 
@@ -23,6 +25,8 @@ export interface Env {
   NEBIUS_API_KEY?: string;
   TAVILY_API_KEY?: string;
   COMPOSIO_API_KEY?: string;
+  /** Signing secret of the Composio project webhook subscription (verifies /webhooks/composio). */
+  COMPOSIO_WEBHOOK_SECRET?: string;
   DODO_PAYMENTS_API_KEY?: string;
   DODO_WEBHOOK_SECRET?: string;
   INGEST_SECRET?: string;
