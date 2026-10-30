@@ -6,9 +6,9 @@ import schemas from './fixtures/tool-schemas.json';
 describe('catalogue', () => {
   it('is exactly the 15 connectors Gabriel chose, two per category (one signing)', () => {
     expect(PROVIDERS.map((p) => p.provider).sort()).toEqual(['asana', 'dropbox', 'docusign', 'gmail', 'googlecalendar', 'googledrive', 'hubspot', 'jira', 'microsoft_teams', 'outlook', 'outlook_calendar', 'quickbooks', 'salesforce', 'slack', 'xero'].sort());
-    const byCat = Object.groupBy(PROVIDERS, (p) => p.category);
-    for (const c of ['email', 'chat', 'crm', 'storage', 'calendar', 'tasks', 'accounting']) expect(byCat[c], c).toHaveLength(2);
-    expect(byCat.signing).toHaveLength(1);
+    const count = (c: string) => PROVIDERS.filter((p) => p.category === c).length;
+    for (const c of ['email', 'chat', 'crm', 'storage', 'calendar', 'tasks', 'accounting']) expect(count(c), c).toBe(2);
+    expect(count('signing')).toBe(1);
   });
   it('every provider has implemented actions matching its catalogue entry', () => {
     for (const p of PROVIDERS) expect(Object.keys(PROVIDER_ACTIONS[p.provider] ?? {}).sort(), p.provider).toEqual([...p.actions].sort());
