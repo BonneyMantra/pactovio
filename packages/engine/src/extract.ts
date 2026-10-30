@@ -18,7 +18,7 @@ const NO_THINK = { chat_template_kwargs: { enable_thinking: false } };
 export async function extractOverview(c: Common) {
   const task = `Return the tender overview.
 - lots: every lot with its number, title, estimated value in whole euros (use clarified values) and the filename of its tenderer response form if there is one.
-- gates: every PASS/FAIL selection criterion (financial standing / turnover, tax compliance, insurance levels per cover type, health and safety, professional ability, certifications such as ISO 27001, number of references, exclusion grounds). One item per distinct criterion (insurance: one gate per cover type, each with its own limit, ref like "A4 public liability"); lot = null when it applies to all lots. Lift numbers exactly (turnover in whole euros and over how many years, cover limits in whole euros, number of references and look-back years).
+- gates: every PASS/FAIL selection criterion: financial standing / turnover, insurance (one gate per cover type, each with its own limit, ref like "A4 public liability"), references, named certifications, exclusion grounds, tax compliance, health and safety, professional ability. kind: "turnover", "insurance", "references", "exclusion"; "certification" ONLY for a named standard or accreditation (ISO 27001, Cyber Essentials, CE marking); tax clearance, health and safety, tenderer summary and technical ability are "other". lot = null when the criterion applies to all lots. Lift numbers exactly (turnover in whole euros and over how many years, cover limits in whole euros, number of references and look-back years). remediable = true when the pack lets the tenderer hold the cover or document only if successful or by award.
 - deadlines: submission deadline, clarification query deadline, any other dated milestone (ISO 8601; times are Irish local = GMT/UTC unless the pack says otherwise).
 - submission_deadline: the closing date/time for tender responses.
 - clarifications: every numbered clarification with the query, the buyer response, and what it affects.
@@ -35,9 +35,10 @@ export async function extractLot(c: Common, lot: { lot_no: string; title: string
 Sources: the Requirements and Specifications document, the lot's response form tables (Ref No., Requirements, Mandatory/Desirable, compliance, comments), and the award criteria in the call for tender.
 - kind: "mandatory" = must / M / pass-fail; "scored" = weighted award criterion or desirable (D) item that earns marks or a written method statement that is scored; "info" = context the tenderer need not answer.
 - weight: percentage of the award marks the criterion carries when stated, else null.
-- needs_response: true when the response form has a box where the tenderer must write an answer for this item.
+- needs_response: true ONLY when the tenderer writes a narrative answer in a free-text box. False for price and cost tables, rate cards, yes/no confirmations, CV and staff tables.
+- kind "info" covers headings, instructions on how to complete the form, and background that needs no response from the tenderer.
 - word_limit: only when stated for that item.
-- Skip the selection gates (turnover, insurance, tax, exclusion), they are handled separately, and skip requirements that belong to other lots.
+- Skip the pass/fail selection criteria themselves (A1 tenderer summary, A2 financial, A3 tax, A4 insurance, A5 health and safety, A6 technical ability as headings, A7 references), they are handled separately; DO include their numbered sub-requirements (A.6.1 and so on) and everything in Sections B. Skip requirements that belong to other lots.
 - Apply clarifications that change a requirement and cite them in note.
 Return every item, one entry per reference number, no summarising.`;
   return chatJSON(LotRequirements, {

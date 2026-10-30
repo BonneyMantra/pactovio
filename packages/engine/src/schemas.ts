@@ -16,6 +16,7 @@ export const GateSpec = z.object({
   min_cover_eur: z.number().nullable().describe('Minimum insurance cover in whole euros'),
   certification: z.string().nullable().describe('Certification required, e.g. ISO 27001'),
   min_references: z.number().int().nullable(),
+  remediable: z.boolean().describe('True when the pack lets the tenderer meet it only if successful or after award ("holds, or will hold should they be successful", "before contract"), so a shortfall can still be fixed'),
   doc: z.string().describe('Exact filename of the document the gate comes from'),
   page: z.number().int().nullable(),
 });
@@ -37,10 +38,10 @@ export type Overview = z.infer<typeof Overview>;
 export const ExtractedReq = z.object({
   ref: z.string().describe('Reference exactly as printed, e.g. B1.1.1'),
   text: z.string().describe('The requirement text, as written (after any clarification override)'),
-  kind: z.enum(['mandatory', 'scored', 'info']),
+  kind: z.enum(['mandatory', 'scored', 'info']).describe('mandatory = must/M/pass-fail; scored = weighted award criterion or desirable item; info = headings, form-completion instructions, background'),
   weight: z.number().nullable().describe('Percentage of the award marks this criterion carries, else null'),
   word_limit: z.number().int().nullable(),
-  needs_response: z.boolean().describe('True when the tenderer must write an answer in the response form'),
+  needs_response: z.boolean().describe('True ONLY when the tenderer writes a narrative answer in a free-text box. False for price and cost tables, rate cards, yes/no confirmations, CV and staff tables, signatures'),
   doc: z.string().describe('Exact filename where the requirement is printed'),
   page: z.number().int().nullable().describe('Page number from the [page N] marker'),
   note: z.string().nullable().describe('Clarification that overrides or refines the requirement, e.g. "Clarification 3: ..."'),

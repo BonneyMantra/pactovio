@@ -2,7 +2,7 @@ import type { Claim, Evidence } from '@pactovio/contracts';
 import type { z } from 'zod';
 
 type ClaimT = z.infer<typeof Claim>;
-export type ClaimType = 'certification' | 'sla' | 'headcount' | 'client' | 'money' | 'date';
+export type ClaimType = 'certification' | 'sla' | 'headcount' | 'client' | 'money' | 'date' | 'technology';
 interface Token { type: ClaimType; key: string }
 
 const WORDS: Record<string, number> = {
@@ -48,6 +48,8 @@ export function claimTokens(raw: string, clients: string[] = []): Token[] {
   for (const m of t.matchAll(new RegExp(`\\b(?:\\d{1,2}(?:st|nd|rd|th)?\\s+)?(${MONTHS.join('|')})\\s+((?:19|20)\\d{2})\\b`, 'g'))) add('date', `${m[2]}-${String(MONTHS.indexOf(m[1]!) + 1).padStart(2, '0')}`);
   for (const m of t.matchAll(/\b((?:19|20)\d{2})\b/g)) add('date', m[1]!);
 
+  // product and technology names the evidence must mention: CamelCase (ArcGIS, PostgreSQL, TypeScript) and versioned names (Java 21, Windows Server 2019)
+  for (const m of raw.matchAll(/\b([A-Z][a-z]+[A-Z][A-Za-z]+|[A-Z]{2,}[a-z]+[A-Za-z]*|(?:Java|Python|Node|Windows Server|\.NET|Angular|React|SQL Server)\s?\d+(?:\.\d+)?)\b/g)) add('technology', m[1]!.toLowerCase().replace(/\s+/g, ' '));
   const named = raw.matchAll(/\b((?:[A-Z][\w&'-]+\s+){1,5}(?:Authority|Board|Council|University|Department|Commission|Ltd|Limited|Group|Agency|Observatory|Institute|College|Hospital|Operator|Plc|GmbH))\b/g);
   for (const m of named) {
     const k = m[1]!.toLowerCase();

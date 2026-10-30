@@ -2,8 +2,11 @@ import type { ReqKind, ReqStatus } from '@pactovio/contracts';
 import type { Coverage } from './schemas';
 import type { GateResult } from './gates';
 
-/** Cosine thresholds for Qwen3-Embedding-8B (1024 dims); calibrated on the Teagasc run, change with evidence. */
-export const SIM = { strong: 0.5, weak: 0.32, floor: 0.2 } as const;
+/**
+ * Cosine thresholds for Qwen3-Embedding-8B (first 1024 dims, "title + chunk" embedded), calibrated on the Harbour Digital
+ * library: matching requirements score 0.53-0.76, unrelated ones 0.44-0.48. Re-calibrate when the library or model changes.
+ */
+export const SIM = { strong: 0.62, weak: 0.55, floor: 0.5 } as const;
 
 export interface RankedEvidence { evidenceId: string; score: number; validTo: string | null }
 export interface Judgement { coverage: Coverage; evidence_ids: string[]; note: string }
@@ -60,14 +63,15 @@ export function coverageScore(reqs: ScoredReq[]): number {
 export type DecisionT = 'BID' | 'NO_BID' | 'CONDITIONAL';
 
 /**
- * Bid decision by rule: a failed hard gate or very weak coverage is NO_BID; open gaps, unverifiable gates
- * or middling coverage are CONDITIONAL; otherwise BID.
+ * Bid decision by rule: a failed hard gate or very weak coverage is NO_BID; open gaps, unverifiable gates,
+ * gates that can still be met after award, or middling coverage are CONDITIONAL; otherwise BID.
  */
 export function decide(gates: GateResult[], reqs: ScoredReq[]): { decision: DecisionT; score: number } {
   const score = coverageScore(reqs);
   const mandatoryGaps = reqs.filter((r) => r.kind === 'mandatory' && r.status === 'GAP').length;
-  if (gates.some((g) => g.status === 'fail')) return { decision: 'NO_BID', score: Math.min(score, 34) };
+  if (gates.some((g) => g.status === 'fail' && !g.remediable)) return { decision: 'NO_BID', score: Math.min(score, 34) };
   if (score < 35 || mandatoryGaps >= 3) return { decision: 'NO_BID', score };
-  if (mandatoryGaps > 0 || gates.some((g) => g.status === 'unknown') || score < 65) return { decision: 'CONDITIONAL', score };
+  // a failed gate the buyer lets you meet after award (cover "will hold if successful") is a condition, not a veto
+  if (mandatoryGaps > 0 || gates.some((g) => g.status !== 'pass') || score < 65) return { decision: 'CONDITIONAL', score };
   return { decision: 'BID', score };
 }

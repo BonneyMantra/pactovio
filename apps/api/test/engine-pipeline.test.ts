@@ -18,7 +18,7 @@ const vec = (text: string) => {
   }
   // stand-in for semantic similarity: texts about the same topic share a dimension, as a real embedder would place them
   const topics: [RegExp, number][] = [[/continuity|disaster|\brto\b/i, 1000], [/penetration/i, 1001], [/take-on|take on|incumbent/i, 1002], [/service desk|24x[57]|support/i, 1003], [/27001/i, 1004]];
-  for (const [re, d] of topics) if (re.test(text)) v[d]! += 6;
+  for (const [re, d] of topics) if (re.test(text)) v[d]! += 14;
   const n = Math.sqrt(v.reduce((a, x) => a + x * x, 0)) || 1;
   return v.map((x) => x / n);
 };
@@ -29,9 +29,9 @@ const OVERVIEW = {
   title: 'Web applications maintenance (test pack)', buyer: 'Teagasc', procedure: 'Open', submission_deadline: '2026-11-19T14:00:00+00:00',
   lots: [{ lot_no: '1', title: 'Multiple web applications', value_eur: 1_250_000, response_form_doc: 'TRD1.docx' }, { lot_no: '2', title: 'Nutrient Management Planner', value_eur: 2_500_000, response_form_doc: null }],
   gates: [
-    { lot: null, ref: 'A2', kind: 'turnover', text: 'Turnover of at least EUR 750,000 in each of the last three years', min_turnover_eur: 750_000, turnover_basis: 'each_year', years: 3, insurance_type: null, min_cover_eur: null, certification: null, min_references: null, doc: 'CFT.docx', page: 19 },
-    { lot: null, ref: 'A4a', kind: 'insurance', text: 'Public liability EUR 6.5 million', min_turnover_eur: null, turnover_basis: null, years: null, insurance_type: 'public_liability', min_cover_eur: 6_500_000, certification: null, min_references: null, doc: 'CFT.docx', page: 19 },
-    { lot: '2', ref: 'A6', kind: 'certification', text: 'ISO 27001 certification', min_turnover_eur: null, turnover_basis: null, years: null, insurance_type: null, min_cover_eur: null, certification: 'ISO 27001', min_references: null, doc: 'CFT.docx', page: 20 },
+    { lot: null, ref: 'A2', kind: 'turnover', text: 'Turnover of at least EUR 750,000 in each of the last three years', min_turnover_eur: 750_000, turnover_basis: 'each_year', years: 3, insurance_type: null, min_cover_eur: null, certification: null, min_references: null, remediable: false, doc: 'CFT.docx', page: 19 },
+    { lot: null, ref: 'A4a', kind: 'insurance', text: 'Public liability EUR 6.5 million', min_turnover_eur: null, turnover_basis: null, years: null, insurance_type: 'public_liability', min_cover_eur: 6_500_000, certification: null, min_references: null, remediable: true, doc: 'CFT.docx', page: 19 },
+    { lot: '2', ref: 'A6', kind: 'certification', text: 'ISO 27001 certification', min_turnover_eur: null, turnover_basis: null, years: null, insurance_type: null, min_cover_eur: null, certification: 'ISO 27001', min_references: null, remediable: false, doc: 'CFT.docx', page: 20 },
   ],
   deadlines: [{ label: 'Clarification queries close', at: '2026-11-05T14:00:00+00:00', doc: 'CFT.docx', page: 1 }, { label: 'Tender submission', at: '2026-11-19T14:00:00+00:00', doc: 'CFT.docx', page: 1 }],
   clarifications: [{ no: '3', query: 'Lot values?', response: 'Lot 1 EUR 1.25m', affects: 'value' }],
@@ -135,8 +135,8 @@ describe('pack run pipeline with recorded model responses', () => {
   it('writes one verdict per lot: decision by rule, reasons from the model, gates recorded', async () => {
     const v = await all<{ lot: string; decision: string; score: number; gates_json: string; reasons_json: string; run_id: string }>('SELECT * FROM verdicts WHERE tender_id = ? AND workspace_id = ? ORDER BY lot', TEAGASC, HARBOUR);
     expect(v.map((x) => x.lot)).toEqual(['1', '2']);
-    expect(v[0]!.decision).toBe('NO_BID'); // public liability EUR 6M is below the EUR 6.5M gate: a failed hard gate is NO_BID
-    expect(v[1]!.decision).toBe('NO_BID');
+    expect(v[0]!.decision).toBe('CONDITIONAL'); // public liability EUR 6M < EUR 6.5M, but the pack lets it be met after award
+    expect(JSON.parse(v[0]!.gates_json).find((g: { name: string }) => g.name.startsWith('Public liability')).detail).toContain('can be met after award');
     expect(v.every((x) => x.run_id === runId)).toBe(true);
     expect(JSON.parse(v[0]!.reasons_json)[0]).toContain('B1.4');
     expect(JSON.parse(v[0]!.gates_json).map((g: { name: string }) => g.name).join()).toContain('Turnover A2');

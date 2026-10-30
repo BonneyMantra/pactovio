@@ -15,7 +15,7 @@ const profile = {
   regions: [], cpv_focus: [], keywords: [],
 } as unknown as CompanyProfile;
 
-const gate = (g: Partial<GateSpec>): GateSpec => ({ lot: null, ref: 'A2', kind: 'turnover', text: 't', min_turnover_eur: null, turnover_basis: null, years: null, insurance_type: null, min_cover_eur: null, certification: null, min_references: null, doc: 'd', page: 1, ...g });
+const gate = (g: Partial<GateSpec>): GateSpec => ({ lot: null, ref: 'A2', kind: 'turnover', text: 't', min_turnover_eur: null, turnover_basis: null, years: null, insurance_type: null, min_cover_eur: null, certification: null, min_references: null, remediable: false, doc: 'd', page: 1, ...g });
 
 describe('gates arithmetic (all in code, integer minor units)', () => {
   it('turnover: average of the latest 3 years against the threshold', () => {
@@ -38,7 +38,9 @@ describe('gates arithmetic (all in code, integer minor units)', () => {
 
   it('insurance compares held cover with the required limit per cover type', () => {
     expect(checkInsurance(gate({ kind: 'insurance', insurance_type: 'public_liability', min_cover_eur: 5_000_000 }), profile).status).toBe('pass');
-    expect(checkInsurance(gate({ kind: 'insurance', insurance_type: 'professional_indemnity', min_cover_eur: 6_000_000 }), profile).status).toBe('fail');
+    const short = checkInsurance(gate({ kind: 'insurance', insurance_type: 'professional_indemnity', min_cover_eur: 6_000_000, remediable: true }), profile);
+    expect(short).toMatchObject({ status: 'fail', remediable: true });
+    expect(short.detail).toBe('Held EUR 5,000,000 is below EUR 6,000,000 required');
     expect(checkInsurance(gate({ kind: 'insurance', insurance_type: 'cyber', min_cover_eur: 1_000_000 }), profile).status).toBe('unknown');
   });
 
@@ -48,6 +50,11 @@ describe('gates arithmetic (all in code, integer minor units)', () => {
     expect(checkCertification(iso, profile, new Date('2027-06-01T00:00:00Z')).status).toBe('fail');
     expect(checkCertification(gate({ kind: 'certification', certification: 'ISO 9001' }), profile, new Date('2026-11-19T14:00:00Z')).detail).toContain('days left');
     expect(checkCertification(gate({ kind: 'certification', certification: 'ISO 14001' }), profile, new Date('2026-11-19')).status).toBe('fail');
+  });
+
+  it('an unnumbered accreditation we do not track is unverifiable, never a failed veto', () => {
+    const r = checkCertification(gate({ kind: 'certification', certification: 'Tax Clearance' }), profile, new Date('2026-11-19'));
+    expect(r.status).toBe('unknown');
   });
 
   it('references count only contracts inside the look-back window', () => {
@@ -64,13 +71,18 @@ describe('gates arithmetic (all in code, integer minor units)', () => {
 });
 
 describe('bid decision rules', () => {
-  const ok = { ref: 'A', lot: null, name: 'g', kind: 'turnover', detail: '' } as const;
+  const ok = { ref: 'A', lot: null, name: 'g', kind: 'turnover', detail: '', remediable: false } as const;
   const req = (status: 'MET' | 'PARTIAL' | 'GAP' | 'NEEDS_EVIDENCE', kind: 'mandatory' | 'scored' = 'mandatory', weight: number | null = null) => ({ kind, weight, status });
 
   it('a failed gate is NO_BID and caps the score', () => {
     const d = decide([{ ...ok, status: 'fail' }], [req('MET'), req('MET')]);
     expect(d.decision).toBe('NO_BID');
     expect(d.score).toBeLessThanOrEqual(34);
+  });
+  it('a failed gate the buyer lets you meet after award is CONDITIONAL, not NO_BID', () => {
+    const d = decide([{ ...ok, status: 'fail', remediable: true }], [req('MET'), req('MET'), req('MET')]);
+    expect(d.decision).toBe('CONDITIONAL');
+    expect(decide([{ ...ok, status: 'fail', remediable: false }], [req('MET'), req('MET')]).decision).toBe('NO_BID');
   });
   it('mandatory gaps make it CONDITIONAL, three of them NO_BID', () => {
     const g = [{ ...ok, status: 'pass' as const }];

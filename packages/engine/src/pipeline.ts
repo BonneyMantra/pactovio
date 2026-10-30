@@ -1,5 +1,6 @@
 import { HttpError, PackText, type CompanyProfile } from '@pactovio/contracts';
 import { emit } from '@pactovio/events';
+import { normRef } from './docx-fill';
 import { dedupeReqs, extractLot, extractOverview } from './extract';
 import { evaluateGates, type GateResult } from './gates';
 import { draftAnswersImpl } from './draft';
@@ -11,6 +12,9 @@ import { Overview, type ExtractedReq, type GateSpec } from './schemas';
 import { MAX_DRAFTS_PER_LOT, type RunCtx, type Stepper } from './types';
 import { nowIso } from './util';
 import { writeVerdict } from './verdict';
+
+/** Price schedules are priced by a person (or the quote lane), never drafted as prose. */
+const PRICING = /\b(cost|costs|price|pricing|rate card|hourly rate|day rate|fee|fees|payment schedule|discount)\b|€/i;
 
 const key = (rc: RunCtx, name: string) => `runs/${rc.runId}/${name}`;
 const putJson = (rc: RunCtx, name: string, v: unknown) => rc.env.FILES.put(key(rc, name), JSON.stringify(v));
@@ -81,7 +85,9 @@ export async function runPackPipeline(rc: RunCtx, step: Stepper): Promise<void> 
   const perLot = await Promise.all(lots.map((l) => step(`extract-lot-${l.lot_no}`, async (): Promise<ExtractedReq[]> => {
     const { text } = await block();
     const { data } = await extractLot({ env, pack: text, onStep, fetch: rc.fetch }, l);
-    const reqs = dedupeReqs(data.requirements);
+    // the selection criteria (A2, A4 ...) are checked as gates; drop the copies the form tables repeat per lot
+    const gateRefs = new Set(overview.gates.map((g) => normRef(/^[A-Za-z]+\.?\d+(?:\.\d+)*/.exec(g.ref.trim())?.[0] ?? g.ref)));
+    const reqs = dedupeReqs(data.requirements).filter((r) => !gateRefs.has(normRef(r.ref)));
     await putJson(rc, `lot-${l.lot_no}.json`, reqs);
     return reqs;
   })));
@@ -132,7 +138,7 @@ export async function runPackPipeline(rc: RunCtx, step: Stepper): Promise<void> 
 
   // 7. Drafts for the heaviest scored questions of each lot (the rest on demand)
   for (const [i, l] of lots.entries()) {
-    const qs = perLot[i]!.filter((r) => r.needs_response && r.kind !== 'info').sort((a, b) => (b.weight ?? 0) - (a.weight ?? 0) || (a.kind === 'scored' ? -1 : 1)).slice(0, MAX_DRAFTS_PER_LOT);
+    const qs = perLot[i]!.filter((r) => r.needs_response && r.kind !== 'info' && !PRICING.test(`${r.ref} ${r.text}`)).sort((a, b) => (b.weight ?? 0) - (a.weight ?? 0) || (a.kind === 'scored' ? -1 : 1)).slice(0, MAX_DRAFTS_PER_LOT);
     if (!qs.length) continue;
     await step(`draft-lot-${l.lot_no}`, async () => {
       const out = await draftAnswersImpl(env, { workspaceId: rc.workspaceId, tenderId: rc.tenderId, lot: l.lot_no, questions: qs.map((q) => ({ ref: q.ref, question: q.text, wordLimit: q.word_limit ?? undefined })) }, { runId: rc.runId, onStep, fetch: rc.fetch });

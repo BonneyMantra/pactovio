@@ -59,6 +59,14 @@ describe('claimCheck', () => {
     expect(c[0]!.supported).toBe(false);
   });
 
+  it('flags an invented product or technology the evidence never mentions (ArcGIS), keeps a documented one', () => {
+    const lib = [...LIB, ev('evd_stack', 'Company profile: capabilities', 'Technical capabilities: .NET 8; Java 21 / Spring; React and TypeScript; PostgreSQL and SQL Server.')];
+    expect(claimCheckSync('We have supported ArcGIS Enterprise geodatabases for years.', lib, ALLOW)[0]!.supported).toBe(false);
+    expect(claimCheckSync('Our engineers work in TypeScript and PostgreSQL.', lib, ALLOW)[0]!.supported).toBe(true);
+    expect(claimCheckSync('We run Java 21 services.', lib, ALLOW)[0]!.supported).toBe(true);
+    expect(claimCheckSync('We run Java 8 services.', lib, ALLOW)[0]!.supported).toBe(false);
+  });
+
   it('ignores sentences that make no checkable claim', () => {
     expect(claimCheckSync('We will start with a joint planning workshop. Our approach is incremental.', LIB, ALLOW)).toEqual([]);
   });

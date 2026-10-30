@@ -36,7 +36,7 @@ describe('matrix status rules', () => {
     expect(r.evidence_ids).toEqual(['evd_a']);
   });
   it('gate rows take their status from the code check', () => {
-    const g = { ref: 'A2', lot: null, name: 'n', kind: 'turnover' as const, detail: 'd' };
+    const g = { ref: 'A2', lot: null, name: 'n', kind: 'turnover' as const, detail: 'd', remediable: false };
     expect(statusFromGate({ ...g, status: 'pass' }).status).toBe('MET');
     expect(statusFromGate({ ...g, status: 'fail' }).status).toBe('GAP');
     expect(statusFromGate({ ...g, status: 'unknown' }).status).toBe('NEEDS_EVIDENCE');
