@@ -121,6 +121,40 @@ The 24x7 agent is the `AgentHub` Durable Object: a streaming tool loop on Nemotr
 
 Plans: Scout (free, 3 credits), Team (USD 149 a month, 150 credits), Business (USD 449 a month, 600 credits), credit pack (100 credits, USD 40). A pack read costs 1, 2 or 4 credits by page count, a design match 1, a buyer refresh 1. Checkout returns a Dodo test checkout URL; the webhook is verified with Standard Webhooks signatures and is idempotent. No real payment is possible. Sample workspaces are shared by judges and never charged. Usage is also sent to a Dodo meter, but no metered product is attached, so the credit ledger is the billing.
 
+## Fine-tuned tender-notice extractor (LoRA on an NVIDIA open model)
+
+A real, measured LoRA fine-tune of `nvidia/Llama-3.1-Nemotron-Nano-4B-v1.1` (NVIDIA Open Model License) that turns a tender notice's text into
+five structured fields: submission deadline, lot count, CPV division of the main subject, whether an estimated value is stated, and buyer country.
+
+- Data: 2,188 EU TED contract notices (v3 search API, `notice-type=cn-standard`, published since 2026-08-01, pulled by the job itself). TED
+  publishes under the Commission's reuse policy (Decision 2011/833/EU); per TED's legal notice, procurement notices can be freely reused
+  commercially or not, and the editorial content is CC BY 4.0. Labels come from TED's structured fields; the input is the buyer's own text
+  rendered like the notice form (buyer, title, description, lot titles and descriptions, the time-limit and estimated-value lines).
+  TED's translated `notice-title` is not used because it embeds the country and CPV category. No model-written text is in the data.
+- Split by buyer, so no buyer appears in two splits: train 1,868, val 100, test 220. Dedupe by notice id and by normalised input text
+  (1 duplicate dropped); overlap between splits: 0 ids, 0 inputs, 0 buyers. The test notices were never seen in training.
+- Training: one Nebius AI Cloud Serverless Job (`aijob-e00eje0fdntak0kj5a`, `pactovio-finetune-1030-2253`, deleted after completion), 1x H100 in
+  eu-north1, LoRA r=16 on all linear layers, 2 epochs, 232 steps, 315 s of training, about 9.3 min running. Cost: an estimated $0.5-0.7 at an assumed
+  H100 rate; we did not read the billing figure. No Token Factory spend.
+- Evaluation: the same 220 held-out test notices and the same prompt for the base model (zero-shot) and the tuned model, greedy decoding.
+
+| Test set (n=220) | Base zero-shot | Tuned |
+|---|---|---|
+| Valid JSON | 217 | 220 |
+| Deadline exact match | 95.0% | 100% |
+| Lot count | 92.7% | 100% |
+| Estimated value stated (F1) | 69.8% | 100% |
+| CPV division (accuracy / macro-F1) | 12.3% / 3.2% | 58.2% / 33.5% |
+| Buyer country (accuracy / macro-F1) | 29.1% / 9.2% | 94.6% / 85.8% |
+| All five fields exact | 3.6% | 55.0% |
+
+Read it honestly: most of the base model's gap is format-following (it often returns ISO-2 country codes, drops a key, or invents a CPV
+division); the deadline score for the base counts a date prefix as correct. The hard field is CPV division, where the tuned model reaches 58%
+against 24.5% for always answering the most common division. Deadline and value lines are present in the notice text, so those fields test
+extraction, not inference. Results are in `jobs/finetune/results.json`; run with `scripts/start-finetune.sh` (no secrets needed).
+
+This is a measured experiment alongside the product: the live app still uses the Token Factory Nemotron models above, and the adapter is not served.
+
 ## Run it locally
 
 ```bash
