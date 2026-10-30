@@ -46,7 +46,7 @@ describe('seeded GET endpoints validate against their contracts', () => {
   });
 
   const ids = { id: 'tnd_sample_teagasc_p4941' } as Record<string, string>;
-  const simple = endpointList.filter((e) => e.method === 'GET' && e.kind === 'json' && e.status !== 'stub');
+  const simple = endpointList.filter((e) => e.method === 'GET' && e.kind === 'json' && e.status !== 'stub' && e.lane !== 'agent'); // agent GETs need the AgentHub Durable Object (not available outside wrangler dev); covered by agent-hub.test.ts
   for (const e of simple) {
     it(`${e.id} responds and matches its schema`, async () => {
       const path = honoPath(e.path).replace(':id', e.id === 'getRun' ? 'run_sample_teagasc' : e.id === 'getBuyer' ? 'teagasc' : e.id === 'getEvidence' ? 'evd_sample_iso27001' : e.id === 'getIntake' ? 'int_sample_teagasc' : ids.id!);
