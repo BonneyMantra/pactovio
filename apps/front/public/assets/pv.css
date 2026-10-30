@@ -215,3 +215,41 @@ textarea.input { height: auto; min-height: 88px; padding: 10px 12px; resize: ver
   .topbar { padding: 0 14px; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; } }
+
+/* §8 product UI: switch, identity menu, phone drawer, guardrails panel */
+.pv-switch { display: inline-flex; align-items: center; gap: 10px; background: none; border: 0; padding: 4px 2px; cursor: pointer; color: var(--ink); }
+.pv-switch-track { width: 34px; height: 20px; border-radius: 999px; background: var(--line-2); position: relative; transition: background 160ms var(--ease); flex: none; }
+.pv-switch-thumb { position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18); transition: transform 180ms var(--ease); }
+.pv-switch[aria-checked="true"] .pv-switch-track { background: var(--ink); }
+.pv-switch[aria-checked="true"] .pv-switch-thumb { transform: translateX(14px); }
+.pv-switch:focus-visible { outline: 2px solid var(--teal-2); outline-offset: 2px; border-radius: 8px; }
+.pv-nav { display: flex; flex-direction: column; gap: 2px; }
+.pv-idwrap { margin-top: auto; position: relative; }
+.pv-identity { width: 100%; border: 0; background: transparent; cursor: pointer; font: inherit; color: inherit; }
+.pv-identity:hover, .pv-identity[aria-expanded="true"] { background: var(--surface-2); }
+.pv-plan { height: 18px; padding: 0 6px; font-size: 11px; }
+.pv-menu { position: absolute; left: 0; right: 0; bottom: calc(100% + 6px); background: #fff; border-radius: 12px; box-shadow: var(--shadow-pop); padding: 6px; z-index: 40; animation: rise 180ms var(--ease); }
+.pv-menu-head { padding: 6px 10px 4px; }
+.pv-menu-item { display: flex; align-items: center; gap: 10px; width: 100%; padding: 7px 10px; border-radius: 8px; border: 0; background: none; font: inherit; font-size: 14px; color: var(--ink); cursor: pointer; text-align: left; }
+.pv-menu-item:hover, .pv-menu-item:focus-visible { background: var(--surface-2); outline: none; }
+.pv-menu-txt { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pv-menu-sep { height: 0.5px; background: var(--line); margin: 6px 4px; }
+.pv-av-sm { width: 22px; height: 22px; border-radius: 6px; font-size: 10px; }
+.pv-menu-btn { display: none; }
+.wk-guard { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 8px 10px; margin-top: 10px; border-radius: 10px; background: var(--surface); box-shadow: 0 0 0 0.5px var(--line); color: var(--ink-2); }
+.wk-guard b { font-weight: 550; color: var(--ink); }
+@media (max-width: 960px) {
+  .app { grid-template-columns: 1fr; }
+  .side { position: fixed; inset: 0 auto 0 0; width: 272px; height: 100vh; flex-direction: column; overflow-y: auto; padding: 14px 10px; gap: 2px; z-index: 50; background: var(--surface);
+    transform: translateX(-104%); transition: transform 220ms var(--ease); box-shadow: var(--shadow-pop); }
+  .side .brand, .side .group, .side .foot { display: flex; }
+  .side .group { display: block; }
+  .pv-drawer-open .side { transform: none; }
+  .pv-backdrop { position: fixed; inset: 0; background: rgba(33, 32, 28, 0.28); z-index: 45; animation: rise 160ms var(--ease); }
+  .pv-menu-btn { display: inline-flex; }
+  .main { padding: 8px; }
+}
+@media (max-width: 600px) { .pv-hide-sm { display: none; } .topbar .pv-crumb-ws { display: none; } }
+.pv-faq summary::-webkit-details-marker { display: none; }
+.pv-faq[open] summary .ico { transform: rotate(180deg); }
+@media (max-width: 600px) { .pv-how { grid-template-columns: 32px 1fr !important; } .pv-how > a { grid-column: 2; justify-self: start; } }

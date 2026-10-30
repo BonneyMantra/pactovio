@@ -10,7 +10,7 @@ export function matrixTab({ reqs, docs }) {
   let status = 'all', lot = 'all', q = '', limit = PAGE;
   const lots = [...new Set(reqs.map((r) => r.lot).filter(Boolean))];
   const search = h('input.input.wk-search', { placeholder: 'Search requirements', type: 'search' });
-  const lotSel = lots.length ? h('select.input.wk-select', { 'aria-label': 'Lot' }, h('option', { value: 'all' }, 'All lots'), lots.map((l) => h('option', { value: l }, `Lot ${l}`))) : null;
+  const lotSeg = () => (lots.length > 1 ? tabs([{ id: 'all', label: 'All lots' }, ...lots.map((l) => ({ id: l, label: `Lot ${l}` }))], lot, (v) => { lot = v; limit = PAGE; draw(); }) : null);
   const bar = h('div.wk-mbar');
   const body = h('div');
   const el = h('div', bar, body);
@@ -26,7 +26,7 @@ export function matrixTab({ reqs, docs }) {
       h('td', chip(r.status || 'NEEDS_EVIDENCE')));
   };
   const draw = () => {
-    bar.replaceChildren(tabs([{ id: 'all', label: 'All', count: count('all') }, ...STATUSES.map((s) => ({ id: s, label: { MET: 'Met', PARTIAL: 'Partial', GAP: 'Gap', NEEDS_EVIDENCE: 'Needs evidence' }[s], count: count(s) }))], status, (s) => { status = s; limit = PAGE; draw(); }), h('div.wk-grow'), lotSel, search);
+    bar.replaceChildren(tabs([{ id: 'all', label: 'All', count: count('all') }, ...STATUSES.map((s) => ({ id: s, label: { MET: 'Met', PARTIAL: 'Partial', GAP: 'Gap', NEEDS_EVIDENCE: 'Needs evidence' }[s], count: count(s) }))], status, (s) => { status = s; limit = PAGE; draw(); }), h('div.wk-grow'), lotSeg(), search);
     const needle = q.trim().toLowerCase();
     const shown = reqs.filter((r) => (status === 'all' || (r.status || 'NEEDS_EVIDENCE') === status) && (lot === 'all' || r.lot === lot || !r.lot)
       && (!needle || `${r.ref} ${r.text} ${r.note}`.toLowerCase().includes(needle)));
@@ -36,7 +36,6 @@ export function matrixTab({ reqs, docs }) {
       : h('div.card', empty('No requirements match', 'Try another status or clear the search.')));
   };
   search.addEventListener('input', () => { q = search.value; limit = PAGE; draw(); search.focus(); });
-  if (lotSel) lotSel.addEventListener('change', () => { lot = lotSel.value; limit = PAGE; draw(); });
   draw();
   return el;
 }
@@ -52,7 +51,29 @@ function draftText(s) {
   return out;
 }
 
-function answerCard(a, tenderId, onChange) {
+/** NeMo Guardrails audit for one answer: the Nebius job's result, or its queued state. */
+function guardPanel(au) {
+  if (!au) return h('div.wk-guard', icon('shield', 14), h('span.xs', h('b', 'NeMo Guardrails')), h('span.xs.muted', 'Queued for audit in a Nebius job'));
+  const done = au.status === 'completed';
+  const s = (au.result && au.result.summary) || {};
+  const judge = au.result && au.result.engine && au.result.engine.judge_model;
+  return h('div.wk-guard', icon('shield', 14), h('span.xs', h('b', 'NeMo Guardrails')),
+    chip(done ? 'completed' : au.status, done ? 'Audited' : au.status === 'queued' ? 'Queued' : String(au.status)),
+    done ? h('span.xs.muted', `${s.claims_flagged ?? 0} flagged · ${s.claims_unsupported ?? 0} unsupported`) : h('span.xs.muted', 'Runs as a Nebius job'),
+    judge ? h('span.xs.muted', `judge ${String(judge).split('/').pop()}`) : null);
+}
+
+async function auditMap() {
+  const m = new Map();
+  try {
+    const ids = ((await api('/limits')).audits || []).filter((a) => a.subject_type === 'answer').slice(0, 20).map((a) => a.id);
+    const rows = await Promise.all(ids.map((id) => api(`/audits/${encodeURIComponent(id)}`).catch(() => null)));
+    rows.filter(Boolean).forEach((a) => m.set(a.subject_id, a));
+  } catch { /* audits are decoration */ }
+  return m;
+}
+
+function answerCard(a, tenderId, onChange, audit) {
   const claims = Array.isArray(a.claims) ? a.claims : [];
   const unsupported = claims.filter((c) => c && c.supported === false).length;
   const setStatus = async (status, btn) => {
@@ -66,15 +87,17 @@ function answerCard(a, tenderId, onChange) {
     h('div.small.muted.wk-q', a.question || dash),
     h('div.wk-draft', draftText(a.draft)),
     claims.length ? h('div.wk-claims', h('span.xs.muted', `${claims.length} claim${claims.length === 1 ? '' : 's'} checked`), unsupported ? h('span.chip.bad', `${unsupported} unsupported, removed`) : h('span.chip.ok', 'All supported')) : null,
+    guardPanel(audit),
     h('div.wk-answer-foot', a.word_limit ? h('span.xs.muted', `Limit ${a.word_limit} words`) : h('span'), a.status === 'approved' ? back : approve));
 }
 
 export async function answersTab({ tenderId }) {
-  const items = (await api(`/tenders/${encodeURIComponent(tenderId)}/answers`)).items || [];
+  const [res, audits] = await Promise.all([api(`/tenders/${encodeURIComponent(tenderId)}/answers`), auditMap()]);
+  const items = res.items || [];
   if (!items.length) return empty('No drafted answers yet', 'After a pack read, Pactovio drafts the scored questions from your evidence and strikes any claim it cannot back.');
   const list = h('div.wk-answers');
   const byId = new Map(items.map((a) => [a.id, a]));
-  const draw = () => list.replaceChildren(...[...byId.values()].map((a) => answerCard(a, tenderId, (upd) => { byId.set(a.id, { ...a, ...upd }); draw(); })));
+  const draw = () => list.replaceChildren(...[...byId.values()].map((a) => answerCard(a, tenderId, (upd) => { byId.set(a.id, { ...a, ...upd }); draw(); }, audits.get(a.id))));
   draw();
   const approved = items.filter((a) => a.status === 'approved').length;
   return h('div', h('div.wk-note.small', icon('shield', 14), `Every sentence is claim-checked against your evidence before you see it. ${approved} of ${items.length} approved.`), list);

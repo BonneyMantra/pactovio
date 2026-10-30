@@ -60,7 +60,7 @@ export async function render(root, _params, ctx) {
   const approvals = t.approvals || [];
   const runs = t.recent_runs || [];
   body.replaceChildren(
-    h('div.grid.g4.wk-stats', stat('New matches', c.new_matches, '#/tenders'), stat('Open intakes', c.open_intakes, '#/inbox'), stat('Approvals waiting', c.approvals_pending, '#/tenders', approvals.length ? 'Drafted answers' : null), stat('Runs today', c.runs_today, '#/tenders')),
+    h('div.grid.g4.wk-stats', stat('New matches', c.new_matches, '#/tenders'), stat('Open intakes', c.open_intakes, '#/inbox'), stat('Approvals waiting', c.approvals_pending, '#/agent', approvals.length ? 'Drafted answers' : null), stat('Runs today', c.runs_today, matches[0] ? `#/tenders/${encodeURIComponent(matches[0].tender.id)}` : '#/tenders')),
     h('div.wk-two',
       h('div',
         sectionTitle('Top matches', h('a.small.muted', { href: '#/tenders' }, 'All tenders')),

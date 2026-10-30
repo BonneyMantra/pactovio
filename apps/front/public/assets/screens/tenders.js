@@ -13,7 +13,9 @@ function row({ tender: t, match: m }) {
 
 export async function render(root, _params, ctx) {
   ctx.setCrumbs('Tenders');
-  const toggle = h('label.wk-toggle', h('input', { type: 'checkbox' }), h('span.small', 'Show dismissed'));
+  let showAll = false;
+  const toggle = h('button.pv-switch', { type: 'button', role: 'switch', 'aria-checked': 'false', onclick: () => { showAll = !showAll; toggle.setAttribute('aria-checked', String(showAll)); draw(); } },
+    h('span.pv-switch-track', h('span.pv-switch-thumb')), h('span.small', 'Show dismissed'));
   root.append(h('div.page-head', h('div', h('h1.title', 'Tenders'), h('div.sub', 'Public tenders scored nightly against your capabilities, certificates and turnover.')), toggle));
   const box = h('div.card');
   root.append(box);
@@ -21,13 +23,11 @@ export async function render(root, _params, ctx) {
   let items = [];
   try { items = ((await api('/tenders')).items || []).filter((x) => x && x.tender); } catch (e) { box.replaceChildren(errorBox(e)); return; }
   const draw = () => {
-    const showAll = toggle.querySelector('input').checked;
     const shown = items.filter((x) => showAll || x.match?.status !== 'dismissed')
       .sort((a, b) => (b.match?.fit_score ?? -1) - (a.match?.fit_score ?? -1));
     box.replaceChildren(shown.length
       ? h('div.wk-scroll', h('table.table', h('thead', h('tr', h('th', 'Tender'), h('th', 'Buyer'), h('th.r', 'Value'), h('th', 'Deadline'), h('th', 'Status'))), h('tbody', shown.map(row))))
       : empty('No tenders matched yet', 'The nightly scan reads TED, eTenders and Find a Tender. Matches above 50 land here.'));
   };
-  toggle.querySelector('input').addEventListener('change', draw);
   draw();
 }
