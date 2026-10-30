@@ -3,7 +3,7 @@ export { Composio, ComposioError } from './composio';
 export { verifyComposioWebhook, signComposioWebhook } from './signature';
 export { classifyEmail, heuristicClassify, Classification, type InboundMessage } from './classify';
 export { connectUrl, completeCallback, disconnectProvider, syncConnectors, buildCatalog, watchInbox, markConnected } from './accounts';
-export { runAction, exerciseAction, makeCtx, composioFor, type Deps } from './runtime';
+export { runAction, exerciseAction, exerciseDef, makeCtx, composioFor, type Deps, type Exercise } from './runtime';
 export { runEventActions, matchesFilter, EVENT_ACTIONS, type EventActionResult } from './events';
 export { handleComposioWebhook, parseEnvelope, mailHint } from './webhook';
 export { fetchAndStore, storeMessage, classifyStep, routeStep, draftStep, markIntakeStatus, docKind, type IntakeJob } from './intake';

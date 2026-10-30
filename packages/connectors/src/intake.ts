@@ -82,8 +82,8 @@ export async function classifyStep(env: Env, job: IntakeJob, msg: InboundMessage
   }
   const door = cls.door === 'other' ? null : cls.door;
   await env.DB.batch([
-    env.DB.prepare("UPDATE intakes SET classification_json = ?, workspace_id = ?, status = ?, title = ?" + (door ? ', door = ?' : '') + ' WHERE id = ?')
-      .bind(...[JSON.stringify(cls), ws, door ? 'classified' : 'ignored', truncate(cls.subject || msg.subject, 200), ...(door ? [door] : []), job.intakeId]),
+    env.DB.prepare("UPDATE intakes SET classification_json = ?, workspace_id = ?, status = ?" + (door ? ', door = ?' : '') + ' WHERE id = ?')
+      .bind(...[JSON.stringify(cls), ws, door ? 'classified' : 'ignored', ...(door ? [door] : []), job.intakeId]),
     env.DB.prepare('UPDATE documents SET workspace_id = ? WHERE intake_id = ?').bind(ws, job.intakeId),
   ]);
   return { cls, workspaceId: ws };

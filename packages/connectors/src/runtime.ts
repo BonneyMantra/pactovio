@@ -1,6 +1,6 @@
 import { HttpError } from '@pactovio/contracts';
 import type { Env } from '@pactovio/contracts/env';
-import { ActionError, type ActionCtx, type ActionOutput, type Input } from './actions';
+import { ActionError, type ActionCtx, type ActionDef, type ActionOutput, type Input } from './actions';
 import { providerSpec } from './catalog';
 import { Composio } from './composio';
 import { PROVIDER_ACTIONS } from './providers';
@@ -66,20 +66,28 @@ export async function runAction(
   }
 }
 
-/** e2e helper: run, read back, clean up. Returns what to print (no secrets). */
-export async function exerciseAction(env: Env, workspaceId: string, provider: string, action: string, input?: Input, deps: Deps = {}) {
-  const def = PROVIDER_ACTIONS[provider]?.[action];
-  const row = await getConnector(env, workspaceId, provider);
-  if (!def || !isLive(row)) return { ok: false, error: `${provider}.${action} unavailable or not connected` } as const;
-  const ctx = makeCtx(env, row, deps);
+export interface Exercise { ok: boolean; out?: ActionOutput | null; readback?: boolean | null; cleaned?: boolean | null; error?: string }
+
+/** Run one action with a ready context, read the result back through Composio, clean it up. Used by the e2e script and exerciseAction. */
+export async function exerciseDef(def: ActionDef, ctx: ActionCtx, input?: Input, extra?: (out: ActionOutput) => Promise<void>): Promise<Exercise> {
   let out: ActionOutput | null = null;
   try {
     out = await def.run(input ?? def.sample?.({ email: null }) ?? {}, ctx);
     const readback = def.readback ? await def.readback(out, ctx) : null;
+    if (extra) await extra(out);
     let cleaned: boolean | null = null;
     if (def.cleanup) { try { await def.cleanup(out, ctx); cleaned = true; } catch { cleaned = false; } }
-    return { ok: readback !== false && !!out.id, out, readback, cleaned } as const;
+    return { ok: readback !== false && (!!out.id || def.readback === undefined), out, readback, cleaned };
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : String(e), out } as const;
+    if (out && def.cleanup) await def.cleanup(out, ctx).catch(() => undefined);
+    return { ok: false, error: e instanceof Error ? e.message : String(e), out };
   }
+}
+
+/** Same against a workspace's stored connector row. */
+export async function exerciseAction(env: Env, workspaceId: string, provider: string, action: string, input?: Input, deps: Deps = {}): Promise<Exercise> {
+  const def = PROVIDER_ACTIONS[provider]?.[action];
+  const row = await getConnector(env, workspaceId, provider);
+  if (!def || !isLive(row)) return { ok: false, error: `${provider}.${action} unavailable or not connected` };
+  return exerciseDef(def, makeCtx(env, row, deps), input);
 }
