@@ -90,10 +90,10 @@ describe('failure paths', () => {
     const res = await call('/api/webhooks', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{"url":"not-a-url","events":[]}' });
     expect(res.status).toBe(400);
   });
-  it('action endpoints are 501 not_implemented stubs', async () => {
-    const res = await call('/api/tenders/tnd_sample_teagasc_p4941/runs', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
-    expect(res.status).toBe(501);
-    expect(((await res.json()) as { code: string }).code).toBe('not_implemented');
+  it('starting a run on an unknown tender is a 404, not a 500', async () => {
+    const res = await call('/api/tenders/tnd_nope/runs', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
+    expect(res.status).toBe(404);
+    expect(((await res.json()) as { code: string }).code).toBe('not_found');
   });
   it('/v1 requires an API key', async () => {
     expect((await call('/v1/today')).status).toBe(401);

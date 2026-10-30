@@ -5,6 +5,16 @@
   "type": "module",
   "main": "src/index.ts",
   "types": "src/index.ts",
-  "exports": { ".": "./src/index.ts" },
-  "dependencies": { "@pactovio/contracts": "*", "@pactovio/models": "*", "zod": "^4.1.0" }
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@pactovio/contracts": "*",
+    "@pactovio/models": "*",
+    "fflate": "^0.8.3",
+    "unpdf": "^2.0.1",
+    "zod": "^4.1.0",
+    "@pactovio/pack": "*",
+    "@pactovio/events": "*"
+  }
 }

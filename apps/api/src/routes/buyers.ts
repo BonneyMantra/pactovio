@@ -1,12 +1,17 @@
-import { endpoints, HttpError, type BuyerIntel } from '@pactovio/contracts';
+import { endpoints } from '@pactovio/contracts';
+import { buyerIntel } from '@pactovio/engine';
 import { one } from '../lib/db';
 import type { Register } from '../lib/router';
 
 export const register: Register = (r) => {
-  r.on(endpoints.getBuyer, async ({ db, params }) => {
-    const b = await one<BuyerIntel>(db, 'SELECT * FROM buyer_intel WHERE buyer_key = ?', params.id);
-    if (!b) throw new HttpError(404, 'No intel for this buyer yet. POST /buyers/{id}/refresh', 'not_found');
-    return b;
+  // Reads D1 only: Tavily is never called on page load.
+  r.on(endpoints.getBuyer, async ({ env, params }) => buyerIntel(env, params.id, { refresh: false }));
+
+  // The only route that calls Tavily live (KV-cached, 3 per judge session, 30 live calls per day).
+  r.on(endpoints.refreshBuyer, async ({ env, db, auth, params }) => {
+    await buyerIntel(env, params.id, { refresh: true, sessionId: auth.sessionId ?? undefined });
+    const s = auth.sessionId ? await one<{ tavily_used: number }>(db, 'SELECT tavily_used FROM judge_sessions WHERE id = ?', auth.sessionId) : null;
+    return { buyer_key: params.id, refreshed: true, tavily_used: s?.tavily_used ?? 0 };
   });
-  r.stub(endpoints.refreshBuyer, 'engine.buyerIntel');
 };
+

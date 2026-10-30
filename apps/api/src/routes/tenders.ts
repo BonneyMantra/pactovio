@@ -1,6 +1,7 @@
 import {
   endpoints, HttpError, type Answer, type Document, type Requirement, type Run, type TenderMatch, type Verdict,
 } from '@pactovio/contracts';
+import { draftAnswers, fillForm, filledKey, startPackRun } from '@pactovio/engine';
 import { exec, one, rows } from '../lib/db';
 import { MATCH_SELECT, requireTender, splitMatch } from '../lib/tenders';
 import type { Register } from '../lib/router';
@@ -35,7 +36,10 @@ export const register: Register = (r) => {
     };
   });
 
-  r.stub(endpoints.startPackRun, 'engine.startPackRun');
+  r.on(endpoints.startPackRun, async ({ env, auth, workspaceId, params, body }) => {
+    await requireTender(env.DB, params.id);
+    return { run_id: await startPackRun(env, { workspaceId, tenderId: params.id, sessionId: auth.sessionId ?? undefined, replay: body.replay }) };
+  });
 
   r.on(endpoints.getMatrix, async ({ db, workspaceId, params }) => {
     await requireTender(db, params.id);
@@ -55,7 +59,12 @@ export const register: Register = (r) => {
     return { items: await rows<Answer>(db, 'SELECT * FROM answers WHERE workspace_id = ? AND tender_id = ? ORDER BY lot, question_ref', workspaceId, params.id) };
   });
 
-  r.stub(endpoints.draftAnswer, 'engine.draftAnswers');
+  r.on(endpoints.draftAnswer, async ({ env, workspaceId, params, body }) => {
+    await requireTender(env.DB, params.id);
+    const [answer] = await draftAnswers(env, { workspaceId, tenderId: params.id, lot: body.lot, questions: [{ ref: body.question_ref, question: body.question, wordLimit: body.word_limit }] });
+    if (!answer) throw new HttpError(500, 'Draft was not created', 'internal');
+    return answer;
+  });
 
   r.on(endpoints.patchAnswer, async ({ db, workspaceId, params, body }) => {
     const a = await one<Answer>(db, 'SELECT * FROM answers WHERE id = ? AND tender_id = ? AND workspace_id = ?', params.answerId, params.id, workspaceId);
@@ -70,6 +79,21 @@ export const register: Register = (r) => {
     return { ...a, draft, status, approved_at: approvedAt };
   });
 
-  r.stub(endpoints.fillForm, 'engine.fillForm');
-  r.stub(endpoints.downloadForm, 'engine.fillForm');
+  r.on(endpoints.fillForm, async ({ env, db, workspaceId, params, body }) => {
+    await requireTender(db, params.id);
+    const ids = body.answer_ids;
+    const answers = ids?.length
+      ? await rows<Answer>(db, `SELECT * FROM answers WHERE workspace_id = ? AND tender_id = ? AND id IN (${ids.map(() => '?').join(',')})`, workspaceId, params.id, ...ids)
+      : await rows<Answer>(db, "SELECT * FROM answers WHERE workspace_id = ? AND tender_id = ? AND status = 'approved'", workspaceId, params.id);
+    if (!answers.length) throw new HttpError(400, 'Approve at least one answer before filling the form', 'validation');
+    const r2_key = await fillForm(env, params.docId, answers);
+    return { r2_key, download_url: `/api/tenders/${params.id}/forms/${params.docId}/filled` };
+  });
+
+  r.on(endpoints.downloadForm, async ({ env, workspaceId, params }) => {
+    const obj = await env.FILES.get(filledKey(workspaceId, params.id, params.docId));
+    if (!obj) throw new HttpError(404, 'This form has not been filled yet', 'not_found');
+    const name = (obj.customMetadata?.filename ?? 'form.docx').replace(/\.docx$/i, '');
+    return new Response(obj.body, { headers: { 'content-type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'content-disposition': `attachment; filename="${name} (filled).docx"` } });
+  });
 };
