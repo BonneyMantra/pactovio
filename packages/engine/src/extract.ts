@@ -83,7 +83,7 @@ export function dedupeReqs(reqs: ExtractedReq[]): ExtractedReq[] {
   return [...seen.values()];
 }
 
-const lotKey = (s: string | null): string | null => (s == null ? null : (/\d+/.exec(s)?.[0] ?? s.trim()));
+const lotKey = (s: string | null): string | null => (s == null ? null : (/\d+/.exec(s)?.[0] ?? s.replace(/^["'`\s]+|["'`\s]+$/g, '')));
 /** Cover the buyer lets the tenderer arrange after award: "holds, or will hold should they be successful", "required to hold for the term". */
 export const AFTER_AWARD = /(?:will hold[^.]{0,60}successful|shall be required to hold|required to hold for the term|hold(?:s)?,? or will hold)/i;
 
@@ -93,8 +93,11 @@ export const AFTER_AWARD = /(?:will hold[^.]{0,60}successful|shall be required t
  * after award (decided from the text by a rule, not left to the model).
  */
 export function normaliseOverview(o: Overview, packText: string): Overview {
-  const lots = o.lots.map((l) => ({ ...l, lot_no: lotKey(l.lot_no) ?? l.lot_no }));
-  const all = o.gates.map((g) => ({ ...g, lot: lotKey(g.lot) }));
+  // A tender without numbered lots comes back as one lot with a word for a number ("base"): call it lot 1.
+  const single = o.lots.length === 1 && !/\d/.test(o.lots[0]!.lot_no);
+  const key = (s: string | null): string | null => (single && s != null && !/\d/.test(s) ? '1' : lotKey(s));
+  const lots = o.lots.map((l) => ({ ...l, lot_no: key(l.lot_no) ?? l.lot_no }));
+  const all = o.gates.map((g) => ({ ...g, lot: key(g.lot) }));
   const afterAward = AFTER_AWARD.test(packText);
   const gates = all
     .filter((g, i) => g.lot === null || !all.some((h, j) => j !== i && h.lot === null && h.ref === g.ref && h.kind === g.kind))

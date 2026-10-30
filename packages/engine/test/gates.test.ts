@@ -111,4 +111,11 @@ describe('overview clean-up', () => {
     const strict = normaliseOverview({ ...base, lots: [], gates: [g({ ref: 'A4', kind: 'insurance' })] }, 'Cover must be in place at submission.');
     expect(strict.gates[0]!.remediable).toBe(false);
   });
+  it('a tender without numbered lots (the model answers "base", sometimes with quote marks) becomes lot 1, gates included', () => {
+    const o = normaliseOverview({ ...base, lots: [{ lot_no: '"base"', title: 'a', value_eur: null, response_form_doc: null }], gates: [g({ lot: '"base"' }), g({ ref: 'A9', lot: 'base' })] }, 'x');
+    expect(o.lots[0]!.lot_no).toBe('1');
+    expect(o.gates.map((x) => x.lot)).toEqual(['1', '1']);
+    const two = normaliseOverview({ ...base, lots: [{ lot_no: '"A"', title: 'a', value_eur: null, response_form_doc: null }, { lot_no: 'B', title: 'b', value_eur: null, response_form_doc: null }], gates: [] }, 'x');
+    expect(two.lots.map((l) => l.lot_no)).toEqual(['A', 'B']);
+  });
 });
