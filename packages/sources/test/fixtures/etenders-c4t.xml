@@ -1,0 +1,12 @@
+<c4t cftid="9239900" procedure="open" eval-type="prompt.meat" num-of-lots="3" round="1" offset-24="false" many-for-one="false" pack-in="1" internal-id="2026/null/35">
+  <envelope type="offline" name="envelope.type.offline" id="1" sequence="1" pos="1">
+    <section id="1791426180555" level="1" pos="1">
+      <label>Complete Tender</label>
+      <criterion level="1" pos="1" id="17914261805551" type="file" size="99" mandatory="1" included-in-evaluation="1">
+        <label>File</label>
+        <value/>
+      </criterion>
+    </section>
+  </envelope>
+  <pub-key>MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDpjIxTNWaR0tVo8UXjBjJ9h6UkLJ58EywybremfMCqn35nfeB+KCqT36Nxw1s+Z9gGJfz8zxT0Fyihnw3R3tyyFtlrYWqIOVYDVIUgMBDVL0hnb7ByfSrqt4efGT3Il11Pf35akiRBK9iHhj8NjZKngPJ7Vzmzc82LLrK59mvQvQIDAQAB</pub-key>
+</c4t>

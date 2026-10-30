@@ -1,29 +1,10 @@
-import { NotImplemented, type Tender } from '@pactovio/contracts';
-import type { Env } from '@pactovio/contracts/env';
-
-export interface TedSearchParams {
-  /** TED expert query string, e.g. `buyer-country=IRL AND notice-type=cn-standard`. */
-  query: string;
-  limit?: number;
-  page?: number;
-}
-
-export interface EtendersPack {
-  resourceId: string;
-  files: { filename: string; r2Key: string }[];
-}
-
-/** Lane: sources. Search TED; returns tender rows ready to upsert. */
-export async function searchTed(_params: TedSearchParams): Promise<Tender[]> {
-  throw new NotImplemented('sources.searchTed');
-}
-
-/** Lane: sources. Fetch an eTenders (Ireland) pack by resource id; stores files in R2. */
-export async function fetchEtendersPack(_resourceId: string): Promise<EtendersPack> {
-  throw new NotImplemented('sources.fetchEtendersPack');
-}
-
-/** Lane: sources. Nightly scan: pull new notices, triage with MODEL_FAST, write tenders + tender_matches, emit tender.matched. */
-export async function runNightlyScan(_env: Env): Promise<{ scanned: number; matched: number }> {
-  throw new NotImplemented('sources.runNightlyScan');
-}
+export { searchTed, buildTedQuery, mapTedNotice, tedDeadline, cleanTitle, etendersRef, TED_FIELDS, type TedSearchParams } from './ted';
+export { searchFts, mapFtsRelease, type FtsParams } from './fts';
+export { fetchEtendersPack, parseDocumentList, listPages, safeFilename, type EtendersPack, type EtendersOptions } from './etenders';
+export { lightningTriage, TriageResult, type TriageFn, type TriageWorkspace } from './triage';
+export { upsertTenders, bumpCounters } from './scan-db';
+export {
+  runNightlyScan, fetchNotices, triageWorkspace, ensurePack, notifyMatches, finishScan, loadWorkspaces, emptyStats, MATCH_THRESHOLD,
+  type ScanOptions, type ScanStats, type NewMatch,
+} from './scan';
+export { SEGMENT_CPV, SCAN_COUNTRIES, cpvMatches, buyerKey } from './types';

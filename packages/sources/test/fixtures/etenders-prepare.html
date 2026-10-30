@@ -1,0 +1,324 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+    
+        <!-- ceproc.ok -->
+    
+
+    <html:html>
+
+    <head>
+        <!-- /WEB-INF/jsp/c4t/resource/anonymousDownload.jsp -->
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+        <title>Notice & Tender Documents</title>
+        <meta http-equiv="X-UA-Compatible" content="IE=11" />
+        <meta name="Description" content="e-Procurement platform home page"/>
+		<meta content="e-Procurement platform - Home page" name="Title"/>
+		<meta content="57" name="Type"/>
+		<meta content="DOCUMENTS/COMM/EN" name="Reference"/>
+		<meta content="European Dynamics" name="Creator"/>
+		<meta name="Language" content="En"/>
+		<meta content="25" name="Classification"/>
+		<meta content="tenders, e-procurement, documents, european law, legislation, economic operator, tenderer, procurement, contract, contracting authority, supplier, awarding authority, institutions, european union, eu" name="Keywords"/>
+        <link rel="shortcut icon"   type="image/ico" href="/epps/images/favicon.ico" />
+		
+		<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+		<link rel="stylesheet" href="/epps/css/bt/custom.css"/>
+		<link rel="stylesheet" href="/epps/css/bt/bootstrap-datetimepicker.css"/>
+		<link rel="stylesheet" href="/epps/css/bt/bootstrap-datepicker3.min.css" media='screen'/> 	
+		<link rel="stylesheet" href="/epps/css/bt/jquery.treefilter.css"/>
+        <link rel="stylesheet" href="/epps/css/print.css" type="text/css" media="print" />
+        
+        
+
+
+<script>
+	const PAGE_LITERAL = 'Page';
+	const RESULTS_PER_PAGE_LITERAL = 'Results Per page';
+	const ERROR_MSG_LITERAL = 'An error has occurred';
+	const WARNING_MSG_LITERAL = 'Warning';
+	const GOTO_PAGE_LITERAL = 'Go to Page';
+    const RESULTS_PER_PAGE_OPTIONS_LITERAL = ["10","20","50","100"];
+    const CONTEXT_PATH_LITERAL = '/epps';
+    const UPLOAD_ACCEPT_LITERAL = '.7z,.avi,.csv,.doc,.docm,.docx,.dot,.dotx,.dwg,.e0x,.fr,.geojson,.info,.jpeg,.jpg,.json,.mov,.mp4,.mpp,.msg,.odp,.ods,.odt,.p7m,.pages,.pdf,.png,.ppt,.pptx,.rar,.rtf,.svg,.tar,.tiff,.txt,.util,.webp,.wmv,.xls,.xlsb,.xlsm,.xlsx,.xml,.zip,.zipx';
+</script>
+
+
+        <script type="text/javascript" src="/epps/scripts/bt/jquery-1.11.3.js"></script>
+		<script type="text/javascript" src="/epps/scripts/bt/popper.min.js" ></script>
+		<script type="text/javascript" src="/epps/scripts/bt/bootstrap.min.js"></script>
+            
+        <script type="text/javascript">
+       		var $j = jQuery.noConflict();
+            var LOCALE = '';
+            var INVALID_CHARACTERS = '<>&%';
+        </script>
+        
+        <script type="text/javascript" src="/epps/scripts/jquery-migrate-1.2.1.js"></script>
+        <script type="text/javascript" src="/epps/scripts/jquery.formatCurrency-1.4.0.min.js"></script>
+        <script type="text/javascript" src="/epps/scripts/jquery.formatCurrency.all.js"></script>
+		<script type="text/javascript" src="/epps/scripts/bt/navScroll.js"></script>
+		<script type="text/javascript" src="/epps/scripts/jqComm.js"></script>
+        <script type="text/javascript" src="/epps/scripts/jqForm.js"></script>
+        <script type="text/javascript" src="/epps/scripts/jqTableSet.js"></script>
+        <script type="text/javascript" src="/epps/scripts/add.criteria.js"></script>
+        <script type="text/javascript" src="/epps/scripts/common.js"></script>
+        <script type="text/javascript" src="/epps/scripts/bt/common.js"></script>
+		<script type="text/javascript" src="/epps/scripts/bt/tablesaw.js"></script>
+		<script type="text/javascript" src="/epps/scripts/bt/tablesaw-init.js"></script>
+		<script type="text/javascript" src="/epps/scripts/bt/jquery.treefilter.js"></script>
+		<script type="text/javascript" src="/epps/scripts/bt/bootstrap-datepicker.min.js" ></script>
+		<script type="text/javascript" src="/epps/scripts/bt/moment.min.js" ></script>
+		<script type="text/javascript" src="/epps/scripts/bt/bootstrap-datetimepicker.js"></script>
+    
+        <script type="text/javascript">           
+           /*@cc_on
+			if (document && document.execCommand) {
+				try { 
+					document.execCommand("BackgroundImageCache",false, true); 
+				}
+				catch (e) {}
+			}
+			@*/
+        </script>
+                
+        <script type="text/javascript">
+        //<![CDATA[
+            $j('document').ready(function(ev){
+                $j("table").tableZebra();
+                //$j("form").prepareForm();
+                $j('button#MClose').hideAlert("#Message");
+                $j('.countdown').textCountdown({remaining_text: " remaining characters"});
+                
+                
+            });
+        //]]>
+        
+        
+            var defaults = {
+            		language: 'en', 
+                    showOn: "both",
+                    buttonText: "Calendar",
+                    buttonImage: "/epps/images/action_calendar.gif",
+                    buttonImageOnly: true, clearBtn: true,
+                    firstDay: 1,
+                    weekStart: 0,
+                    format: "dd/mm/yyyy",
+                    mandatory: false,
+                    todayHighlight: true
+           };
+        
+        </script>
+        
+        <script type="text/javascript">
+			// functions from bt/common.js
+			$j(document).ready(function(){
+				noResultFoundBeautifier();
+				stackModeDataColumn();
+			});
+			
+			function jcv_handleErrors(messages, focusField) {
+
+			    if (focusField && focusField != null) {
+			        var doFocus = true;
+			        if (focusField.disabled || focusField.type == 'hidden') {
+			            doFocus = false;
+			        }
+			        if (doFocus &&
+			                focusField.style &&
+			                focusField.style.visibility &&
+			                focusField.style.visibility == 'hidden') {
+			            doFocus = false;
+			        }
+			        if (doFocus) {
+			            focusField.focus();
+			        }
+			    }
+
+			    if ($j("#Message")) {
+			        $j("#Message").remove();
+			    }
+			    var mesagesCont = document.createElement("div");
+			    $j(mesagesCont)
+			        .attr("id", "Message")
+			        .addClass("alert alert-danger alert-dismissible");
+
+			   	// Close "X" 
+				var closeButton = document.createElement("a");
+			    $j(closeButton)
+		        	.attr("href", "#")
+		        	.attr('data-dismiss','alert')
+		        	.attr('aria-label','close')
+		        	.addClass('close');
+			    $j(closeButton).html("&times;");
+
+			    // The Error Message "An error has occurred:"
+			   	var errorMSG = document.createElement("div");
+			   	$j(errorMSG)
+		            .addClass("row container-fluid")
+	    	        .append(closeButton)
+	                .append("<strong>An error has occurred:</strong>");
+
+				// Div of col
+				var divColMessages = document.createElement("div");
+				$j(divColMessages)
+					.addClass('col');
+
+				// List of messages
+			    var listMessages = document.createElement("ul");
+			    for (i=0; i< messages.length; i++){
+			    	$j(listMessages).append("<li>" + messages[i] + "</li>");
+			    }
+				// Append List inside col
+			    $j(divColMessages)
+		    		.append(listMessages);
+			    $j(errorMSG).append(divColMessages);
+
+			    // Append the errorMessage
+			    // the close button
+			    // the row of messages
+			    $j(mesagesCont)
+		       		.append(errorMSG)
+		       		.append(closeButton);
+			        
+			    $j("#msgCol")[0]
+			        .appendChild(mesagesCont);
+			} 									
+		</script>
+		
+    </head>
+    
+	
+
+    <body class="popup">
+		<div class="container-fluid pt-2 pb-2">
+			
+			<div class="row">
+				<div class="col-md-12">
+					<noscript>
+						<div class="NoScript">
+							For enjoying the full functionality of this application, please ensure that Javascript is enabled in your browser.
+						</div>
+					</noscript>
+				</div>
+			</div>
+
+			<div class="row">
+				<div id="msgCol" class="col-md-12">
+           			
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+           		</div>
+           	</div>
+           	
+			<div class="row">
+				<div class="col-md-12">
+					
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<script type="text/javascript">
+	function download(){
+		window.opener.setParentHref("/epps/cft/downloadContractDocument.do?documentId=9248114&resourceId=9239900");
+		window.close();
+	}
+</script>
+
+<div class="card-wrapper">
+	<h2>
+		Download tender documents
+	</h2>
+	<div class="row">
+		<div class="col-10 offset-1">
+			<form>
+				<div class="form-row">
+					<div class="form-group">
+						Currently you are not logged in,  therefore the system cannot associate you with the CfT so that it can inform you automatically in case new addendums, corrigendas or clarifications are published. To be associated with the competition, you need to first log in
+					</div>
+				</div>
+				<div class="form-buttons mt-4 float-right">
+					<button type="button" class="btn btn-secondary" onclick="window.close()" title="Cancel download">
+						Cancel download
+					</button>
+					<button type="button" class="btn btn-primary" onclick="download()" title="Proceed without association">
+						Proceed without association
+					</button>
+				</div>
+			</form>
+		</div>
+	</div>
+</div>
+
+
+
+				</div>
+			</div>
+			
+		</div>
+    </body>
+    
+</html:html>
+
