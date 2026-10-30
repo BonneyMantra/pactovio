@@ -9,7 +9,15 @@ export const register: Register = (r) => {
   r.on(endpoints.getToday, async ({ db, workspaceId }) => {
     const now = Date.now();
     const iso = new Date(now).toISOString();
-    const matches = (await rows(db, `${MATCH_SELECT} WHERE m.workspace_id = ? ORDER BY m.fit_score DESC LIMIT 10`, workspaceId)).map(splitMatch);
+    // Real matches: best fit first, newest match first on ties; dismissed notices and passed deadlines are not "today".
+    const matches = (
+      await rows(
+        db,
+        `${MATCH_SELECT} WHERE m.workspace_id = ? AND m.status != 'dismissed' AND (t.deadline IS NULL OR t.deadline > ?)
+         ORDER BY m.fit_score DESC, m.created_at DESC, t.published_at DESC LIMIT 10`,
+        workspaceId, iso,
+      )
+    ).map(splitMatch);
     const closing = await rows<Tender>(
       db,
       `SELECT t.* FROM tenders t JOIN tender_matches m ON m.tender_id = t.id

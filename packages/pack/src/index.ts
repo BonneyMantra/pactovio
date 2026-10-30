@@ -63,9 +63,20 @@ export async function extractPack(env: Env, input: ExtractPackInput): Promise<Pa
   const rows: Row[] = [];
   let budget = MAX_UNZIPPED_BYTES;
 
+  // Keep the id of an existing row for the same file name (sample or earlier rows that requirements and
+  // answers already point at); otherwise derive a stable id from the r2 key.
+  const prior = (await env.DB.prepare(`SELECT id, filename, r2_key FROM documents WHERE ${tenderId ? 'tender_id' : 'intake_id'} = ?`).bind(owner).all<{ id: string; filename: string; r2_key: string }>()).results;
+  const used = new Set<string>();
+  const idFor = async (filename: string, key: string): Promise<string> => {
+    const hit = prior.find((r) => r.r2_key === key && !used.has(r.id)) ?? prior.find((r) => r.filename === filename && !used.has(r.id));
+    const id = hit?.id ?? (await docIdFor(key));
+    used.add(id);
+    return id;
+  };
+
   const handle = async (filename: string, key: string, bytes: Uint8Array, depth: number): Promise<void> => {
     if (filename.startsWith('.') || bytes.byteLength > MAX_ENTRY_BYTES) return;
-    const id = await docIdFor(key);
+    const id = await idFor(filename, key);
     if (kindOf(filename) === 'zip') {
       rows.push({ id, filename, kind: 'zip', r2Key: key, pages: null, textKey: null, isForm: false });
       if (depth >= MAX_ZIP_DEPTH) return;
