@@ -29,6 +29,8 @@ export interface CallOptions {
   maxTokens?: number;
   temperature?: number;
   signal?: AbortSignal;
+  /** Per-request timeout in ms (default 120 s). Whole-pack calls with 100k+ token prompts need longer. */
+  timeoutMs?: number;
   /** Test seam: replace the HTTP client. */
   fetch?: typeof fetch;
 }

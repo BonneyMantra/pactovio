@@ -17,15 +17,15 @@ export function modelFor(env: ModelEnv, role: ModelRole, override?: string): str
 }
 
 /** OpenAI SDK pointed at Nebius Token Factory. */
-export function makeClient(env: ModelEnv, fetchImpl?: typeof fetch): OpenAI {
+export function makeClient(env: ModelEnv, fetchImpl?: typeof fetch, timeoutMs?: number): OpenAI {
   if (!env.NEBIUS_API_KEY) throw new Error('NEBIUS_API_KEY is not configured');
   return new OpenAI({
     apiKey: env.NEBIUS_API_KEY,
     baseURL: env.TOKEN_FACTORY_BASE_URL || DEFAULT_BASE,
     ...(fetchImpl ? { fetch: fetchImpl } : {}),
-    maxRetries: 2,
-    timeout: 120_000,
+    maxRetries: timeoutMs ? 1 : 2,
+    timeout: timeoutMs ?? 120_000,
   });
 }
 
-export const client = (o: Pick<CallOptions, 'env' | 'fetch'>) => makeClient(o.env, o.fetch);
+export const client = (o: Pick<CallOptions, 'env' | 'fetch' | 'timeoutMs'>) => makeClient(o.env, o.fetch, o.timeoutMs);
