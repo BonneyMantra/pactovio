@@ -47,8 +47,8 @@ export function unwrap(data: unknown): unknown {
       const o = cur as Record<string, unknown>;
       const keys = Object.keys(o);
       if (keys.length <= 3 && (o.response_data !== undefined || o.data !== undefined) && keys.every((k) => ['response_data', 'data', 'successful', 'error', 'status'].includes(k))) {
-        cur = o.response_data ?? o.data;
-        continue;
+        const inner = o.response_data ?? o.data;
+        if (inner && typeof inner === 'object') { cur = inner; continue; } // `{ data: "<base64>" }` is content, not a wrapper
       }
     }
     break;
