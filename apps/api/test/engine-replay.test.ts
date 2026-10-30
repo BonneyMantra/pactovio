@@ -20,9 +20,23 @@ async function newRun(replay = true): Promise<RunCtx> {
 const steps = async (runId: string) => (await env.DB.prepare('SELECT * FROM run_steps WHERE run_id = ? ORDER BY seq').bind(runId).all<Record<string, string | number | null>>()).results;
 
 describe('replay mode', () => {
-  it('serves the seeded showcase run: real recorded steps, labelled, totals preserved, no model called', async () => {
+  it('the bundled Teagasc recording is a real run: Ultra steps with cached tokens, three verdicts, drafts, the matrix', () => {
+    const rec = REPLAYS[TEAGASC]!;
+    expect(rec.workspace_id).toBe(HARBOUR);
+    expect(rec.steps.length).toBeGreaterThan(50);
+    expect(rec.steps.some((x) => String(x.model).includes('Ultra') && x.tokens_cached > 50_000 && x.tokens_in > 100_000)).toBe(true);
+    expect(rec.steps.every((x) => x.status === 'ok')).toBe(true);
+    expect(rec.verdicts).toHaveLength(3);
+    expect(rec.requirements.length).toBeGreaterThan(100);
+    expect(rec.answers.length).toBeGreaterThan(5);
+    expect(JSON.stringify(rec)).not.toMatch(/tvly-|api[_-]?key|Bearer /i);
+  });
+
+  it('serves the seeded showcase run when no recording is bundled: real recorded steps, labelled, totals preserved, no model called', async () => {
+    const bundled = REPLAYS[TEAGASC];
+    delete REPLAYS[TEAGASC];
     const rc = await newRun();
-    await runReplay(rc, inlineStep);
+    try { await runReplay(rc, inlineStep); } finally { REPLAYS[TEAGASC] = bundled!; }
     const run = (await env.DB.prepare('SELECT * FROM runs WHERE id = ?').bind(rc.runId).first<Record<string, number | string>>())!;
     expect(run).toMatchObject({ status: 'completed', replay: 1 });
     const st = await steps(rc.runId);
