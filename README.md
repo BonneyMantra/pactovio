@@ -83,7 +83,21 @@ The cost is dominated by Ultra reading the pack once per section group with a ca
 
 15 connectors through Composio managed auth, two per category: Gmail and Outlook, Slack and Microsoft Teams, HubSpot and Salesforce, Google Drive and Dropbox, Google Calendar and Outlook Calendar, Jira and Asana, DocuSign, QuickBooks and Xero. Each does one real job (mail trigger to classified intake with reply drafted never sent, chat posts with approve and decline links, a deal per bid, uploads of filled forms and quotes, calendar events for deadlines, a task per matrix gap, a quote sent for signature, an estimate from an approved quote).
 
-**Honest status: none of the 15 has been tested against a real connected account yet.** The code is validated against Composio's live tool schemas and fixture-tested end to end (`packages/connectors/test`), and `scripts/connector-e2e.ts` is the live check to run once accounts are connected. The production Worker is deployed without a Composio key, so the connector catalogue shows providers as not configured. Teams needs a Microsoft 365 work account; DocuSign and Xero need our own OAuth apps. Mail intake is webhook-driven, so it also needs a Composio webhook pointed at `/webhooks/composio`.
+**Live-tested on 30 Oct 2026 against real connected test accounts** (`npx tsx scripts/connector-e2e.ts all --api https://pactovio.pages.dev`): 9 passed, 0 failed. Each check performs the real action, reads the object back through Composio, then cleans up.
+
+| Connector | Live check | Result |
+|---|---|---|
+| Gmail | create draft, read back, delete | PASS |
+| Gmail real-time intake | email arrives, Composio trigger hits `/webhooks/composio`, Nemotron Lightning classifies it, intake created | PASS (classified `design`, 24 s end to end) |
+| Slack | post message, read back, delete | PASS |
+| Salesforce | create opportunity, read back, delete | PASS |
+| Google Drive | upload file, read back, delete | PASS |
+| Dropbox | upload file, read back, delete | PASS |
+| Google Calendar | create event, read back, delete | PASS |
+| Jira | create task, read back, delete | PASS |
+| Asana | create task, read back, delete | PASS |
+
+Built and fixture-tested but **not live-tested**: HubSpot (test account not finished in time), Outlook and Outlook Calendar (Microsoft account creation was refused for the test persona), Microsoft Teams (needs a Microsoft 365 work account), QuickBooks (Intuit sandbox signup was refused), DocuSign and Xero (need our own OAuth apps). Pactovio uses its own Composio project, so its webhook subscription and connected accounts are isolated from any other product.
 
 ## Agent
 
@@ -111,8 +125,7 @@ The real tender packs are public documents from eTenders, TED and Find a Tender.
 
 ## Cut or not done
 
-- Connectors: nothing live-tested (see above). Teams, DocuSign and Xero have extra prerequisites.
-- Composio triggers are not wired to the production Worker.
+- Connectors: 9 of 15 live-tested (see Connectors); HubSpot, Outlook, Outlook Calendar, Teams, QuickBooks, DocuSign and Xero are fixture-tested only.
 - Scanned PDFs without a text layer are rejected on evidence upload (upload PNG or JPG); PDF image pages are not rendered to PNG for the vision step.
 - Form fill covers table rows keyed by reference number; free-form content controls are untouched.
 - Embeddings are slow on the shared link (about 25 s a request), noticeable on evidence upload.
