@@ -27,6 +27,8 @@ export class Doc {
     d.pdf.setTitle(title);
     d.pdf.setProducer('Pactovio sample data');
     d.pdf.setCreationDate(new Date('2026-10-01T09:00:00Z'));
+    d.pdf.setModificationDate(new Date('2026-10-01T09:00:00Z'));
+    d.pdf.setCreator('Pactovio sample data');
     d.font = await d.pdf.embedFont(StandardFonts.Helvetica);
     d.bold = await d.pdf.embedFont(StandardFonts.HelveticaBold);
     d.newPage();

@@ -10,9 +10,16 @@ const norm = (s: string) => s.toLowerCase().replace(/[\sÂ ]+/g, ' ').replace(/[â
 /** The model's quote must appear verbatim (whitespace and dash insensitive) inside the candidate it names; otherwise there is no citation. */
 export function resolveCitation(chunk: string | null, quote: string | null, cands: Cand[]): Citation | null {
   if (!chunk || !quote || quote.trim().length < 4) return null;
-  const c = cands.find((x) => x.cid === chunk.trim());
+  const id = /\bC(\d{1,3})\b/.exec(chunk)?.[1]; // the model sometimes echoes "C6 | text"; only the id counts
+  const c = id ? cands.find((x) => x.cid === `C${id}`) : undefined;
   if (!c || !norm(c.text).includes(norm(quote))) return null;
   return { doc: c.title, doc_id: c.docId, page: pageOf(c.text), quote: quote.trim() };
+}
+
+/** First catalogue SKU named in the model's string ("VS-210, MM-3" -> "VS-210"); anything unknown ("N/A", invented SKUs) is null. */
+export function normSku(raw: string | null | undefined, known: Set<string>): string | null {
+  for (const t of (raw ?? '').split(/[,;/\s]+/)) if (known.has(t.trim().toUpperCase())) return t.trim().toUpperCase();
+  return null;
 }
 
 type Req = DesignRequest['requirements'][number];
