@@ -64,7 +64,7 @@ export const searchTenders = defineTool({
 
 export const getTender = defineTool({
   name: 'get_tender',
-  description: 'One tender: buyer, value, deadline, lots, documents, the workspace fit score and reason, requirement counts and per-lot verdicts.',
+  description: 'What Pactovio already stores about one tender: buyer, value, deadline, lots, documents, the workspace fit score and reason, requirement counts and per-lot verdicts. It does not read the documents; to read a pack use start_pack_run.',
   input: z.object({ tender_id: tenderId }),
   async run(env, ctx, i) {
     const t = await one<Record<string, unknown> & { lots: { lot_no: string; title: string; value_eur?: number | null }[] }>(env, 'SELECT * FROM tenders WHERE id = ?', i.tender_id);

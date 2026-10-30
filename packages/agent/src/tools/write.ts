@@ -15,7 +15,7 @@ async function tenderTitle(env: Parameters<AgentTool['run']>[0], id: string): Pr
 
 export const startPackRunTool = defineTool({
   name: 'start_pack_run',
-  description: 'Start a pack run on a tender: Pactovio reads the whole document pack, extracts requirements, checks them against the evidence library and produces the matrix and per-lot verdicts. Spends model credits, so the user must confirm.',
+  description: 'Use when the user asks to start, read, analyse or run a tender pack. Starts a pack run on a tender: Pactovio reads the whole document pack, extracts requirements, checks them against the evidence library and produces the matrix and per-lot verdicts. Spends model credits, so the user must confirm.',
   input: z.object({ tender_id: tenderId, replay: z.boolean().default(false).describe('true plays the labelled showcase replay instead of a fresh run') }),
   mutating: true,
   async describe(env, _c, i) {

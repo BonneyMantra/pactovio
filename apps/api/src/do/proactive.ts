@@ -9,6 +9,12 @@ const CHAT_PROVIDERS = ['slack', 'teams', 'microsoftteams'];
 /** Add what the pure mapper needs but the event payload may lack: tender title, buyer, deadline, fit. */
 async function enrich(deps: HubDeps, event: PactovioEvent): Promise<Record<string, unknown>> {
   const p = { ...event.payload };
+  try {
+    if (typeof p.answer_id === 'string' && !p.draft) {
+      const a = await deps.env.DB.prepare('SELECT question_ref, draft, tender_id FROM answers WHERE id = ? AND workspace_id = ?').bind(p.answer_id, deps.workspaceId).first<{ question_ref: string; draft: string; tender_id: string }>();
+      if (a) { p.draft = a.draft; p.question_ref ??= a.question_ref; p.tender_id ??= a.tender_id; }
+    }
+  } catch { /* enrichment is best effort */ }
   const tid = typeof p.tender_id === 'string' ? p.tender_id : undefined;
   if (!tid || (p.title && p.buyer && p.deadline)) return p;
   try {
@@ -55,14 +61,16 @@ async function mirror(deps: HubDeps, text: string, actionId: string | undefined)
   try {
     const conns = await env.DB.prepare(`SELECT provider, meta_json FROM connectors WHERE workspace_id = ? AND status = 'connected' AND provider IN (${CHAT_PROVIDERS.map(() => '?').join(',')})`)
       .bind(workspaceId, ...CHAT_PROVIDERS).all<{ provider: string; meta_json: string | null }>();
-    if (!conns.results.length) return;
+    // Seeded sample connectors are labels, not live accounts: never try to post through them.
+    const live = conns.results.filter((c) => !(c.meta_json && (JSON.parse(c.meta_json) as { sample?: boolean }).sample));
+    if (!live.length) return;
     const secret = env.WEBHOOK_SIGNING_SECRET ?? (env.ENVIRONMENT === 'development' ? 'dev-webhook-signing' : undefined);
     let links: { confirm: string; decline: string } | undefined;
     if (actionId && secret) {
       const url = (d: 'confirm' | 'decline', t: string) => `${BASE_URL(env)}/api/agent/actions/${actionId}/link?w=${encodeURIComponent(workspaceId)}&d=${d}&t=${t}`;
       links = { confirm: url('confirm', await signDecision(secret, workspaceId, actionId, 'confirm')), decline: url('decline', await signDecision(secret, workspaceId, actionId, 'decline')) };
     }
-    for (const c of conns.results) {
+    for (const c of live) {
       const teams = c.provider !== 'slack';
       const body = links ? (teams ? `${text}\n\n[Approve](${links.confirm}) | [Decline](${links.decline})` : `${text}\n<${links.confirm}|Approve> | <${links.decline}|Decline>`) : text;
       const meta = c.meta_json ? (JSON.parse(c.meta_json) as { channel?: string }) : {};

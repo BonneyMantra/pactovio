@@ -5,6 +5,8 @@ import type { StreamLoopParams, StreamLoopResult } from '@pactovio/agent';
 
 const { startPackRun } = vi.hoisted(() => ({ startPackRun: vi.fn(async (..._a: unknown[]) => 'run_test_1') }));
 vi.mock('@pactovio/engine', async (orig) => ({ ...(await orig<object>()), startPackRun }));
+const { runAction } = vi.hoisted(() => ({ runAction: vi.fn(async (_e: unknown, _w: string, _p: string, _a: string, _i: Record<string, unknown>) => ({ ok: true })) }));
+vi.mock('@pactovio/connectors', async (orig) => ({ ...(await orig<object>()), runAction }));
 
 import { runTurn } from '../src/do/chat';
 import { decideAction } from '../src/do/decide';
@@ -200,5 +202,64 @@ describe('alarm: digest and reminders', () => {
     const second = await runDaily(h.deps);
     expect(second.reminders).toBe(0);
     expect(h.store.inboxSince(undefined)).toHaveLength(n + 1); // only a fresh digest
+  });
+});
+
+describe('mirror to Slack and Teams', () => {
+  const posts: { provider: string; action: string; input: Record<string, unknown> }[] = [];
+  beforeEach(async () => {
+    posts.length = 0;
+    runAction.mockImplementation(async (_e: unknown, _w: string, provider: string, action: string, input: Record<string, unknown>) => { posts.push({ provider, action, input }); return { ok: true }; });
+    await env.DB.prepare("DELETE FROM connectors WHERE workspace_id = ? AND provider IN ('slack','teams')").bind(WS).run();
+  });
+  const seed = (provider: string, meta: object) =>
+    env.DB.prepare("INSERT INTO connectors (id, workspace_id, provider, status, external_account_id, meta_json, connected_at) VALUES (?, ?, ?, 'connected', 'acct', ?, ?)")
+      .bind(`cnx_t_${provider}`, WS, provider, JSON.stringify(meta), new Date().toISOString()).run();
+  const matched = { id: 'evt_m', workspace_id: WS, type: 'tender.matched' as const, payload: { tender_id: TENDER }, at: '' };
+
+  it('posts the proactive message to a connected Slack with signed approve and decline links', async () => {
+    await seed('slack', { channel: '#bids' });
+    const h = harness(async () => ({}));
+    const msg = await handleEvent(h.deps, matched);
+    expect(posts).toHaveLength(1);
+    expect(posts[0]).toMatchObject({ provider: 'slack', action: 'post_message' });
+    const text = String(posts[0]!.input.text);
+    expect(posts[0]!.input.channel).toBe('#bids');
+    expect(text).toContain('New match:');
+    const actionId = msg!.pending_action!.id;
+    const approve = /<(https:\/\/[^|]+)\|Approve>/.exec(text)![1]!;
+    const u = new URL(approve);
+    expect(u.pathname).toBe(`/api/agent/actions/${actionId}/link`);
+    expect(u.searchParams.get('w')).toBe(WS);
+    expect(u.searchParams.get('d')).toBe('confirm');
+    const { verifyDecision } = await import('@pactovio/agent');
+    expect(await verifyDecision('dev-webhook-signing', WS, actionId, 'confirm', u.searchParams.get('t')!)).toBe(true);
+    expect(await verifyDecision('dev-webhook-signing', WS, actionId, 'decline', u.searchParams.get('t')!)).toBe(false);
+  });
+
+  it('uses markdown links for Teams, skips sample connectors, and a failing connector never breaks the message', async () => {
+    await seed('teams', {});
+    const h = harness(async () => ({}));
+    await handleEvent(h.deps, { ...matched, id: 'evt_t' });
+    expect(String(posts[0]!.input.text)).toMatch(/\[Approve\]\(https:\/\/.*\) \| \[Decline\]/);
+    posts.length = 0;
+    await env.DB.prepare("UPDATE connectors SET meta_json = '{\"sample\":true}' WHERE id = 'cnx_t_teams'").run();
+    await handleEvent(h.deps, { ...matched, id: 'evt_t2' });
+    expect(posts).toHaveLength(0);
+    await env.DB.prepare("UPDATE connectors SET meta_json = '{}' WHERE id = 'cnx_t_teams'").run();
+    runAction.mockRejectedValueOnce(new Error('composio down'));
+    const msg = await handleEvent(h.deps, { ...matched, id: 'evt_t3' });
+    expect(msg).not.toBeNull();
+  });
+});
+
+describe('enrichment', () => {
+  it('approval.requested pulls the draft answer into the card so the human sees what they approve', async () => {
+    const row = await env.DB.prepare("SELECT id, draft FROM answers WHERE workspace_id = ? AND status = 'draft' LIMIT 1").bind(WS).first<{ id: string; draft: string }>();
+    const h = harness(async () => ({}));
+    const msg = await handleEvent(h.deps, { id: 'evt_appr', workspace_id: WS, type: 'approval.requested', payload: { answer_id: row!.id }, at: '' });
+    expect(msg!.pending_action).toMatchObject({ tool: 'approve_answer', input: { answer_id: row!.id } });
+    expect(msg!.pending_action!.detail).toContain(row!.draft.slice(0, 40));
+    expect(msg!.content).toMatch(/needs your approval: /);
   });
 });

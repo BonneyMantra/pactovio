@@ -2,6 +2,10 @@ import { verifyDecision, type Decision } from '@pactovio/agent';
 import type { PendingAction } from '@pactovio/contracts';
 import type { Env } from '@pactovio/contracts/env';
 import { hubFetch } from '../do/client';
+import { emit } from '@pactovio/events';
+import { z } from 'zod';
+import { EventType } from '@pactovio/contracts';
+import { sessionAuth } from '../lib/auth';
 import type { Router } from '../lib/router';
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
@@ -43,5 +47,16 @@ export function mountActionLinks(r: Router): void {
     const data = (await res.json().catch(() => ({}))) as PendingAction & { error?: string };
     if (!res.ok) return page(`<h2>${res.status === 409 ? 'Already decided' : 'Could not complete'}</h2><p>${esc(data.error ?? 'Try again from Pactovio.')}</p>`, res.status === 409 ? 200 : res.status);
     return page(`<h2>${data.status === 'declined' ? 'Declined' : data.status === 'failed' ? 'Approved, but it failed' : 'Approved'}</h2><p>${esc(data.title ?? data.tool)}</p><p>You can close this tab.</p>`);
+  });
+}
+
+/** Local-only helper: POST /api/agent/dev-emit { type, payload } emits a domain event as the session's workspace. 404 unless ENVIRONMENT=development. */
+export function mountDevEmit(r: Router): void {
+  r.app.post('/agent/dev-emit', async (c) => {
+    if (c.env.ENVIRONMENT !== 'development') return c.json({ error: 'Not found', code: 'not_found' }, 404);
+    const auth = await sessionAuth(c);
+    const b = z.object({ type: EventType, payload: z.record(z.string(), z.unknown()).default({}) }).safeParse(await c.req.json().catch(() => ({})));
+    if (!b.success) return c.json({ error: 'type must be a Pactovio event type', code: 'validation' }, 400);
+    return c.json(await emit(c.env, auth.workspaceId, b.data.type, b.data.payload));
   });
 }

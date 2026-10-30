@@ -2,7 +2,7 @@ import { endpoints, type AgentMessage, type AgentThread, type AgentTurnResult, t
 import { hubFetch, hubJson } from '../do/client';
 import { sessionAuth } from '../lib/auth';
 import { errorResponse, type Register, type Router } from '../lib/router';
-import { mountActionLinks } from './agent-links';
+import { mountActionLinks, mountDevEmit } from './agent-links';
 
 export const register: Register = (r) => {
   r.on(endpoints.listAgentThreads, ({ env, auth }) => hubJson<{ items: AgentThread[] }>(env, auth, '/threads'));
@@ -23,7 +23,7 @@ export const register: Register = (r) => {
     return hubFetch(env, auth, `/events${since ? `?since=${encodeURIComponent(since)}` : ''}`);
   });
   mountSocket(r);
-  if (r.mode === 'session') mountActionLinks(r);
+  if (r.mode === 'session') { mountActionLinks(r); mountDevEmit(r); }
 };
 
 /** WebSocket upgrade -> the workspace's AgentHub DO. Registered directly (not via r.on) because it returns a 101. */

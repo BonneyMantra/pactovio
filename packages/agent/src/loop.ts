@@ -81,12 +81,14 @@ interface StepOut {
   tokensOut: number;
 }
 
-async function streamStep(p: StreamLoopParams, model: string, messages: ChatMessage[], specs: unknown[]): Promise<StepOut> {
+async function streamStep(p: StreamLoopParams, model: string, messages: ChatMessage[], specs: unknown[], thinking: boolean): Promise<StepOut> {
   const client = makeClient(p.env, p.fetch);
   const stream = (await client.chat.completions.create(
     {
       model, messages, tools: specs, tool_choice: 'auto', stream: true, stream_options: { include_usage: true },
       ...(p.maxTokens ? { max_tokens: p.maxTokens } : {}),
+      // A chat must answer in seconds: the agent model runs with thinking off; the Ultra fallback keeps it on.
+      ...(thinking ? {} : { chat_template_kwargs: { enable_thinking: false } }),
     } as never,
     { signal: p.signal },
   )) as unknown as AsyncIterable<{
@@ -148,7 +150,7 @@ export async function streamToolLoop(p: StreamLoopParams): Promise<StreamLoopRes
     let out: StepOut;
     try {
       modelCalls++;
-      out = await streamStep(p, model, messages, specs);
+      out = await streamStep(p, model, messages, specs, role === 'reason');
     } catch (e) {
       if (role === 'reason' && failures >= 1) throw e;
       if (role === 'reason') { failures++; continue; }
