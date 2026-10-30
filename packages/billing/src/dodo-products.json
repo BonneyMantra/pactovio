@@ -1,0 +1,11 @@
+{
+  "mode": "test_mode",
+  "brand_id": "brnd_0NqpuZNLjREo7rCh2FMoJ",
+  "products": {
+    "pro": "pdt_0NqpyGQNE04rfwU6CPCWX",
+    "max": "pdt_0NqpyGYD0xWp7TsXGLMQm",
+    "credits": "pdt_0NqpyGcdEKQxtyGMJJxAn"
+  },
+  "meter_id": "mtr_0NqpyGvHqOCOe5HzpgUNX",
+  "meter_event": "pactovio_credits"
+}

@@ -1,25 +1,17 @@
-import { NotImplemented, type PlanId } from '@pactovio/contracts';
+export * from './plans';
+export * from './ledger';
+export * from './caps';
+export * from './webhook';
+export { createCheckout, createPortal, sendUsage, dodoProducts } from './dodo';
+import { HttpError } from '@pactovio/contracts';
 import type { Env } from '@pactovio/contracts/env';
+import { createCheckout } from './dodo';
+import type { PlanId as Plan } from '@pactovio/contracts';
 
-export type Plan = PlanId;
-export interface PlanState {
-  plan: Plan;
-  status: string;
-  currentPeriodEnd: string | null;
-  creditsBalance: number;
+/** Dodo checkout session URL for a paid plan. (The API route adds the return URL; this is the cross-lane signature.) */
+export async function checkoutUrl(env: Env, workspaceId: string, plan: Exclude<Plan, 'free'>, returnUrl = 'https://pactovio.pages.dev/billing'): Promise<string> {
+  if (plan !== 'pro' && plan !== 'max') throw new HttpError(400, 'Unknown plan', 'validation');
+  const sub = await env.DB.prepare('SELECT dodo_customer_id AS c FROM subscriptions WHERE workspace_id = ?').bind(workspaceId).first<{ c: string | null }>();
+  return createCheckout(env, { workspaceId, plan, returnUrl, customerId: sub?.c });
 }
-
-/** Lane: billing. Plan and credit balance from subscriptions + credit_ledger. */
-export async function getPlan(_env: Env, _workspaceId: string): Promise<PlanState> {
-  throw new NotImplemented('billing.getPlan');
-}
-
-/** Lane: billing. Dodo Payments checkout session URL. */
-export async function checkoutUrl(_env: Env, _workspaceId: string, _plan: Exclude<Plan, 'free'>): Promise<string> {
-  throw new NotImplemented('billing.checkoutUrl');
-}
-
-/** Lane: billing. Spend credits (negative ledger row). `ref` makes it idempotent. Returns the new balance. */
-export async function chargeCredits(_env: Env, _workspaceId: string, _credits: number, _reason: string, _ref: string): Promise<number> {
-  throw new NotImplemented('billing.chargeCredits');
-}
+export type { Plan };
