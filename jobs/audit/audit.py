@@ -23,6 +23,24 @@ os.environ.setdefault("OPENAI_API_KEY", os.environ.get("NEBIUS_API_KEY", ""))
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
+JUDGE_PRIMARY = "nvidia/Nemotron-3.5-Super-VL"
+JUDGE_FALLBACK = "nvidia/nemotron-3-super-120b-a12b"   # same as the app's text fallback
+
+
+def pick_judge() -> str:
+    """Use Super VL unless Token Factory no longer lists it (it vanished for a while on 30 Oct 2026); a failed check keeps it."""
+    try:
+        req = urllib.request.Request("https://api.tokenfactory.nebius.com/v1/models",
+                                     headers={"authorization": f"Bearer {os.environ.get('NEBIUS_API_KEY', '')}"})
+        with urllib.request.urlopen(req, timeout=20) as r:
+            ids = {m.get("id") for m in json.loads(r.read()).get("data", [])}
+        return JUDGE_PRIMARY if JUDGE_PRIMARY in ids or not ids else JUDGE_FALLBACK
+    except Exception:  # noqa: BLE001 - availability probe only
+        return JUDGE_PRIMARY
+
+
+JUDGE = JUDGE_PRIMARY if OFFLINE else pick_judge()
+
 NO_OTHER_RAILS = {"input": False, "retrieval": False, "dialog": False, "tool_input": False, "tool_output": False}
 
 
@@ -53,6 +71,9 @@ def build_rails(path: str) -> dict:
     for flow in ("regex check output", "claim audit", "self check facts"):
         cfg = RailsConfig.from_path(path)
         cfg.rails.output.flows = [flow]
+        for m in cfg.models:
+            if m.type == "main":
+                m.model = JUDGE
         r = LLMRails(cfg)
         r.register_action(ours_actions.claim_audit, "claim_audit")
         out[flow] = r
@@ -134,9 +155,9 @@ async def amain() -> int:
     print(f"queue: {len(queue)} audit(s)", flush=True)
     budget = [MAX_FLAGGED * max(len(queue), 1)]
     rt = await red_team(rails, actions_mod) if RED_TEAM_ON else None
-    engine = {"nemo_guardrails": "0.24.1", "judge_model": "nvidia/Nemotron-3.5-Super-VL", "judge_endpoint": "api.tokenfactory.nebius.com",
+    engine = {"nemo_guardrails": "0.24.1", "judge_model": JUDGE, "judge_endpoint": "api.tokenfactory.nebius.com",
               "labels": {"nemo.regex_output_rail": "NeMo library rail", "ours.claim_audit": "our custom NeMo action",
-                         "nemo.self_check_facts": "NeMo library rail, Nemotron 3.5 Super VL judge"}}
+                         "nemo.self_check_facts": f"NeMo library rail, {JUDGE.split('/')[-1]} judge"}}
     for item in queue:
         status, result = "completed", None
         try:
