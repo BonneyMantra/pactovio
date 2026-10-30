@@ -110,6 +110,14 @@ export const AgentThread = z.object({ id: z.string(), title: z.string(), created
 export const PendingAction = z.object({
   id: z.string(), tool: z.string(), input: Json, summary: z.string(),
   status: z.enum(['pending', 'confirmed', 'declined', 'executed', 'failed']),
+  /** Card title ("Start the pack read?"). */
+  title: z.string().optional(),
+  /** One or two sentences of detail for the card body. */
+  detail: z.string().optional(),
+  /** Where the request came from: the chat model, a proactive event, the MCP server or a scheduled digest. */
+  source: z.enum(['chat', 'event', 'mcp', 'digest']).optional(),
+  /** Compact JSON result once executed (or the error message when failed). */
+  result: z.unknown().optional(),
 });
 export const AgentMessage = z.object({
   id: z.string(),
@@ -121,12 +129,34 @@ export const AgentMessage = z.object({
   at: Iso,
 });
 export const AgentMessageBody = z.object({ content: z.string().min(1).max(8000) });
+/** POST /agent/messages: like AgentMessageBody, thread optional (a new thread is created when omitted). */
+export const AgentChatBody = z.object({ content: z.string().min(1).max(8000), thread_id: z.string().optional() });
+export const AgentTurnResult = z.object({
+  thread_id: z.string(),
+  /** The user message, tool messages and the assistant reply produced by this turn, in order. */
+  messages: z.array(AgentMessage),
+  pending_actions: z.array(PendingAction),
+});
+export const AgentActionDecisionBody = z.object({ decision: z.enum(['confirm', 'decline']) });
+export const AgentDigestResult = z.object({ thread_id: z.string(), message: AgentMessage });
+/**
+ * Frames over /api/agent/ws. Client sends `user_message`, `action_decision`, `ping`.
+ * Server sends the rest: `thread` (the thread a turn runs in), `assistant_delta` (token stream),
+ * `tool_call` (a tool started/finished), `assistant_message` (final or proactive message),
+ * `approval_requested` (an action card: confirm/decline), `action_result`, `event`, `done`, `error`.
+ */
 export const AgentWsMessage = z.discriminatedUnion('type', [
-  z.object({ type: z.literal('user_message'), thread_id: z.string(), content: z.string() }),
+  z.object({ type: z.literal('user_message'), thread_id: z.string().optional(), content: z.string() }),
+  z.object({ type: z.literal('action_decision'), action_id: z.string(), decision: z.enum(['confirm', 'decline']) }),
+  z.object({ type: z.literal('ping') }),
+  z.object({ type: z.literal('thread'), thread: AgentThread }),
   z.object({ type: z.literal('assistant_delta'), thread_id: z.string(), delta: z.string() }),
+  z.object({ type: z.literal('tool_call'), thread_id: z.string(), call_id: z.string(), name: z.string(), input: Json, status: z.enum(['running', 'ok', 'error', 'pending_confirmation']), output: z.unknown().optional() }),
   z.object({ type: z.literal('assistant_message'), message: AgentMessage }),
-  z.object({ type: z.literal('approval_requested'), action: PendingAction }),
+  z.object({ type: z.literal('approval_requested'), action: PendingAction, thread_id: z.string().optional() }),
+  z.object({ type: z.literal('action_result'), action: PendingAction, message: AgentMessage.optional() }),
   z.object({ type: z.literal('event'), event_type: z.string(), payload: Json }),
+  z.object({ type: z.literal('done'), thread_id: z.string() }),
   z.object({ type: z.literal('error'), error: z.string(), code: z.string().optional() }),
 ]);
 export type AgentWsMessage = z.infer<typeof AgentWsMessage>;

@@ -9,6 +9,10 @@ export const register: Register = (r) => {
   r.stub(endpoints.sendAgentMessage, 'agent chat');
   r.stub(endpoints.confirmAgentAction, 'agent action confirm');
   r.stub(endpoints.declineAgentAction, 'agent action decline');
+  r.stub(endpoints.postAgentMessage, 'agent chat');
+  r.stub(endpoints.decideAgentAction, 'agent action');
+  r.stub(endpoints.streamAgentEvents, 'agent events');
+  r.stub(endpoints.runAgentDigest, 'agent digest');
   mountSocket(r);
 };
 
