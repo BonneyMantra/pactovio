@@ -130,6 +130,7 @@ export async function routeStep(env: Env, job: IntakeJob, ws: string, msg: Inbou
     note = `routing failed: ${e instanceof Error ? e.message.slice(0, 160) : 'unknown'}`;
     console.error('intake routing failed', job.intakeId, note);
   }
+  if (note) console.error('intake routing note', job.intakeId, note);
   const sender = splitAddress(msg.from);
   await emit(env, ws, 'intake.classified', {
     intake_id: job.intakeId, door: cls.door === 'other' ? 'ignore' : cls.door, title: cls.subject || msg.subject, subject: msg.subject, sender: sender.name || sender.address,
