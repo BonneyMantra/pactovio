@@ -56,13 +56,13 @@ export const endpoints = {
 
   listDesignRequests: ep({ id: 'listDesignRequests', method: 'GET', path: '/design-requests', tag: 'design', summary: 'Design requests from customers', response: z.object({ items: z.array(DesignRequest) }), status: 'sample', lane: 'quote' }),
   getDesignRequest: ep({ id: 'getDesignRequest', method: 'GET', path: '/design-requests/{id}', tag: 'design', summary: 'Design request with requirements and product matches', params: id, response: DesignRequest, status: 'sample', lane: 'quote' }),
-  matchDesignRequest: ep({ id: 'matchDesignRequest', method: 'POST', path: '/design-requests/{id}/match', tag: 'design', summary: 'Extract requirements and match against the product catalogue', params: id, response: DesignRequest, status: 'stub', lane: 'quote' }),
-  quoteDesignRequest: ep({ id: 'quoteDesignRequest', method: 'POST', path: '/design-requests/{id}/quote', tag: 'design', summary: 'Create a priced quote from the matches', params: id, body: V.QuoteFromDesignBody, response: Quote, status: 'stub', lane: 'quote' }),
+  matchDesignRequest: ep({ id: 'matchDesignRequest', method: 'POST', path: '/design-requests/{id}/match', tag: 'design', summary: 'Extract requirements and match against the product catalogue', params: id, response: DesignRequest, status: 'live', lane: 'quote' }),
+  quoteDesignRequest: ep({ id: 'quoteDesignRequest', method: 'POST', path: '/design-requests/{id}/quote', tag: 'design', summary: 'Create a priced quote from the matches', params: id, body: V.QuoteFromDesignBody, response: Quote, status: 'live', lane: 'quote' }),
   listProducts: ep({ id: 'listProducts', method: 'GET', path: '/products', tag: 'design', summary: 'Product catalogue', response: z.object({ items: z.array(Product) }), status: 'sample', lane: 'quote' }),
 
   listQuotes: ep({ id: 'listQuotes', method: 'GET', path: '/quotes', tag: 'quotes', summary: 'Quotes', response: z.object({ items: z.array(Quote) }), status: 'sample', lane: 'quote' }),
   getQuote: ep({ id: 'getQuote', method: 'GET', path: '/quotes/{id}', tag: 'quotes', summary: 'One quote', params: id, response: Quote, status: 'sample', lane: 'quote' }),
-  exportQuote: ep({ id: 'exportQuote', method: 'GET', path: '/quotes/{id}/export', tag: 'quotes', summary: 'Export quote as DOCX or XLSX', params: id, query: V.ExportQuoteQuery, response: z.unknown(), status: 'stub', lane: 'quote', kind: 'binary' }),
+  exportQuote: ep({ id: 'exportQuote', method: 'GET', path: '/quotes/{id}/export', tag: 'quotes', summary: 'Export quote as DOCX or XLSX', params: id, query: V.ExportQuoteQuery, response: z.unknown(), status: 'live', lane: 'quote', kind: 'binary' }),
 
   listConnectors: ep({ id: 'listConnectors', method: 'GET', path: '/connectors', tag: 'connectors', summary: 'Connector catalogue with live status', response: z.object({ items: z.array(ConnectorCatalogItem) }), status: 'live', lane: 'connectors' }),
   connectConnector: ep({ id: 'connectConnector', method: 'POST', path: '/connectors/{id}/connect', tag: 'connectors', summary: 'Start OAuth; returns the redirect URL (id = provider)', params: id, body: V.ConnectBody, response: V.ConnectResult, status: 'live', lane: 'connectors' }),

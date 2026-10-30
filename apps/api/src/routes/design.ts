@@ -21,6 +21,7 @@ export const register: Register = (r) => {
       await run.finish('completed');
       return out;
     } catch (e) {
+      await run.fail(e);
       await run.finish('failed');
       if (e instanceof HttpError) throw e;
       throw new HttpError(502, e instanceof Error && /NEBIUS_API_KEY/.test(e.message) ? 'Model access is not configured' : 'The model call failed; try again', 'upstream');

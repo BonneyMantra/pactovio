@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildMatches, resolveCitation, type Cand } from '../src/judge';
+import { buildMatches, normSku, resolveCitation, uniqueKeys, type Cand } from '../src/judge';
 import { chunkPages, pageOf } from '../src/chunk';
 
 const cands: Cand[] = [
@@ -57,5 +57,19 @@ describe('chunking', () => {
     expect(c.length).toBeGreaterThan(2);
     expect(c.every((x) => x.text.length < 620)).toBe(true);
     expect(c.at(-1)!.page).toBe(2);
+  });
+});
+
+describe('model output hygiene', () => {
+  it('uniqueKeys suffixes repeated keys so each gets its own verdict', () => {
+    expect(uniqueKeys([{ key: 'range' }, { key: 'ip' }, { key: 'range' }, { key: 'range' }]).map((x) => x.key)).toEqual(['range', 'ip', 'range_2', 'range_3']);
+  });
+  it('normSku takes the first catalogue SKU and rejects N/A and invented SKUs', () => {
+    const known = new Set(['VS-210', 'MM-3']);
+    expect(normSku('VS-210, MM-3', known)).toBe('VS-210');
+    expect(normSku('vs-210', known)).toBe('VS-210');
+    expect(normSku('N/A', known)).toBeNull();
+    expect(normSku('ZZ-9', known)).toBeNull();
+    expect(normSku(null, known)).toBeNull();
   });
 });

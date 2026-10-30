@@ -22,6 +22,16 @@ export function normSku(raw: string | null | undefined, known: Set<string>): str
   return null;
 }
 
+/** The model sometimes repeats a key; the second becomes key_2, so each requirement gets its own verdict. */
+export function uniqueKeys<T extends { key: string }>(items: T[]): T[] {
+  const seen = new Map<string, number>();
+  return items.map((i) => {
+    const n = (seen.get(i.key) ?? 0) + 1;
+    seen.set(i.key, n);
+    return n === 1 ? i : { ...i, key: `${i.key}_${n}` };
+  });
+}
+
 type Req = DesignRequest['requirements'][number];
 type Match = DesignRequest['matches'][number];
 

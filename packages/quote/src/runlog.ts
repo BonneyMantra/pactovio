@@ -16,6 +16,11 @@ export async function startRun(db: D1Database, workspaceId: string, subjectId: s
       await db.prepare('INSERT INTO run_steps (id, run_id, seq, at, purpose, model, status, tokens_in, tokens_out, tokens_cached, ms, cost_usd, summary) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)')
         .bind(newId('step'), id, ++seq, new Date().toISOString(), s.purpose, s.model, s.status, s.tokensIn, s.tokensOut, s.tokensCached, s.ms, s.costUsd, s.summary ?? null).run();
     },
+    /** Record why a run failed (validation or upstream message, never a secret) as a final error step. */
+    fail: async (e: unknown) => {
+      const msg = e instanceof Error ? `${e.name}: ${e.message}`.slice(0, 400) : 'error';
+      await db.prepare("INSERT INTO run_steps (id, run_id, seq, at, purpose, status, summary) VALUES (?,?,?,?,'run failed','error',?)").bind(newId('step'), id, ++seq, new Date().toISOString(), msg).run();
+    },
     finish: async (status: 'completed' | 'failed') => {
       await db.prepare('UPDATE runs SET status = ?, finished_at = ?, tokens_in = ?, tokens_out = ?, cost_usd = ? WHERE id = ?').bind(status, new Date().toISOString(), tin, tout, cost, id).run();
     },

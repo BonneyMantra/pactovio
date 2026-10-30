@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { chatJSON, client, modelFor, costUsd, rankByCosine, liveLimiter, type CallOptions } from '@pactovio/models';
 import { fromRow, HttpError, type DesignRequest } from '@pactovio/contracts';
 import type { Env } from '@pactovio/contracts/env';
-import { buildMatches, normSku, resolveCitation, type Cand, type Judged } from './judge';
+import { buildMatches, normSku, resolveCitation, uniqueKeys, type Cand, type Judged } from './judge';
 import { lexicalRank } from './lexical';
 
 export interface MatchOptions extends Pick<CallOptions, 'onStep' | 'fetch' | 'signal'> {
@@ -78,13 +78,13 @@ export async function matchDesignRequest(env: Env, designRequestId: string, o: M
   const base = { env, onStep: o.onStep, fetch: o.fetch, signal: o.signal };
 
   const { data: ex } = await chatJSON(Extracted, {
-    ...base, role: 'reason', purpose: 'extract requirements', schemaName: 'requirements', temperature: 0, maxTokens: 3000,
+    ...base, role: 'reason', purpose: 'extract requirements', schemaName: 'requirements', temperature: 0, maxTokens: 8000,
     messages: [
       { role: 'system', content: 'You extract technical requirements from a customer enquiry to a sensor manufacturer. List each measurable or checkable requirement separately (range, accuracy, interfaces, protocols, power, environment, ingress, comms, quantity, services, delivery). Always include a requirement with key "quantity" if the number of sites, stations or sets is stated. Do not invent requirements.' },
       { role: 'user', content: `Enquiry from ${dr.customer}:\n\n${spec}` },
     ],
   });
-  const requirements = ex.requirements.map((r) => ({ key: r.key, text: r.text, mandatory: r.mandatory, ...(r.value ? { value: r.value } : {}) }));
+  const requirements = uniqueKeys(ex.requirements).map((r) => ({ key: r.key, text: r.text, mandatory: r.mandatory, ...(r.value ? { value: r.value } : {}) }));
 
   const prows = (await db.prepare('SELECT id, sku, name, unit_price_minor, currency, specs_json FROM products WHERE workspace_id = ?').bind(ws).all<Record<string, unknown>>()).results;
   const products = prows.map((p) => ({ id: String(p.id), sku: String(p.sku), name: String(p.name), specs: JSON.parse(String(p.specs_json ?? '{}')) as { unit?: string } }));
