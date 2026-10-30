@@ -66,36 +66,37 @@ Cookies: the API sets `pv_s` (HttpOnly, SameSite=Lax). From a dev server on anot
 | GET | `/today` | - | `TodayFeed` | sample | foundation | Today feed: matches, closing soon, intakes, approvals, expiring certs |
 | GET | `/tenders` | query `limit`, `cursor`, `q`, `country`, `status`, `min_fit` | `TenderList` | sample | sources | Matched tenders for the workspace |
 | GET | `/tenders/{id}` | params `id` | `TenderDetail` | sample | sources | Tender with documents, latest run, verdicts |
-| POST | `/tenders/{id}/runs` | params `id`; body `replay` | `StartRunResult` | stub | engine | Start a pack run (read, extract, verdict). `replay` plays the showcase run |
-| GET | `/tenders/{id}/matrix` | params `id` | `Matrix` | sample | engine | Requirement matrix with statuses and evidence links |
-| GET | `/tenders/{id}/verdicts` | params `id` | `{ items: Entity[] }` | sample | engine | Per-lot bid / no-bid verdicts |
-| GET | `/tenders/{id}/answers` | params `id` | `{ items: Entity[] }` | sample | engine | Drafted answers with claim checks |
-| POST | `/tenders/{id}/answers/draft` | params `id`; body `lot`, `question_ref`, `question`, `word_limit` | `Answer` | stub | engine | Draft one answer from evidence (claim-checked) |
+| POST | `/tenders/{id}/runs` | params `id`; body `replay` | `StartRunResult` | live | engine | Start a pack run (read, extract, verdict). `replay` plays the showcase run |
+| GET | `/tenders/{id}/matrix` | params `id` | `Matrix` | live | engine | Requirement matrix with statuses and evidence links |
+| GET | `/tenders/{id}/verdicts` | params `id` | `{ items: Entity[] }` | live | engine | Per-lot bid / no-bid verdicts |
+| GET | `/tenders/{id}/answers` | params `id` | `{ items: Entity[] }` | live | engine | Drafted answers with claim checks |
+| POST | `/tenders/{id}/answers/draft` | params `id`; body `lot`, `question_ref`, `question`, `word_limit` | `Answer` | live | engine | Draft one answer from evidence (claim-checked) |
 | PATCH | `/tenders/{id}/answers/{answerId}` | params `id`, `answerId`; body `draft`, `status` | `Answer` | live | engine | Edit or approve an answer |
-| POST | `/tenders/{id}/forms/{docId}/fill` | params `id`, `docId`; body `answer_ids` | `FillFormResult` | stub | engine | Fill the buyer's own DOCX form with approved answers |
-| GET | `/tenders/{id}/forms/{docId}/filled` | params `id`, `docId` | (binary) | stub | engine | Download the filled form (DOCX) |
-| GET | `/runs/{id}` | params `id` | `RunDetail` | sample | engine | Run with its steps |
+| POST | `/tenders/{id}/forms/{docId}/fill` | params `id`, `docId`; body `answer_ids` | `FillFormResult` | live | engine | Fill the buyer's own DOCX form with approved answers |
+| GET | `/tenders/{id}/forms/{docId}/filled` | params `id`, `docId` | (binary) | live | engine | Download the filled form (DOCX) |
+| GET | `/runs/{id}` | params `id` | `RunDetail` | live | engine | Run with its steps |
 | GET | `/runs/{id}/stream` | params `id` | (sse) | live | engine | SSE stream of run steps (event: step | done) |
-| GET | `/buyers/{id}` | params `id` | `BuyerIntel` | sample | engine | Buyer intelligence by buyer_key |
-| POST | `/buyers/{id}/refresh` | params `id` | `RefreshBuyerResult` | stub | engine | Refresh buyer intel with a live Tavily search (capped per session) |
+| GET | `/buyers/{id}` | params `id` | `BuyerIntel` | live | engine | Buyer intelligence by buyer_key |
+| POST | `/buyers/{id}/refresh` | params `id` | `RefreshBuyerResult` | live | engine | Refresh buyer intel with a live Tavily search (capped per session) |
 | GET | `/evidence` | query `limit`, `cursor` | `{ items: Entity[] }` | sample | pack | Evidence library |
 | GET | `/evidence/{id}` | params `id` | `Evidence` | sample | pack | One evidence item |
-| POST | `/evidence` | - | (multipart) | stub | pack | Upload evidence (multipart: file, title, kind, valid_to) |
-| GET | `/intakes` | query `limit`, `cursor`, `door`, `status` | `{ items: Entity[] }` | sample | connectors | Inbox of intakes (all three doors) |
-| GET | `/intakes/{id}` | params `id` | `IntakeDetail` | sample | connectors | One intake with documents |
-| POST | `/intakes` | body `title`, `sender`, `text`, `door` | `IntakeCreateResult` | stub | connectors | Create an intake by upload (multipart) or pasted text (JSON) |
+| POST | `/evidence` | - | (multipart) | live | pack | Upload evidence (multipart: file, title, kind, valid_to) |
+| GET | `/intakes` | query `limit`, `cursor`, `door`, `status` | `{ items: Entity[] }` | live | connectors | Inbox of intakes (all three doors) |
+| GET | `/intakes/{id}` | params `id` | `IntakeDetail` | live | connectors | One intake with documents |
+| POST | `/intakes` | body `title`, `sender`, `text`, `door` | `IntakeCreateResult` | live | connectors | Create an intake by upload (multipart) or pasted text (JSON) |
 | GET | `/design-requests` | - | `{ items: Entity[] }` | sample | quote | Design requests from customers |
 | GET | `/design-requests/{id}` | params `id` | `DesignRequest` | sample | quote | Design request with requirements and product matches |
-| POST | `/design-requests/{id}/match` | params `id` | `DesignRequest` | stub | quote | Extract requirements and match against the product catalogue |
-| POST | `/design-requests/{id}/quote` | params `id`; body `product_ids`, `qty` | `Quote` | stub | quote | Create a priced quote from the matches |
+| POST | `/design-requests/{id}/match` | params `id` | `DesignRequest` | live | quote | Extract requirements and match against the product catalogue |
+| POST | `/design-requests/{id}/quote` | params `id`; body `product_ids`, `qty`, `buyer_country`, `b2b`, `vat_registered` | `Quote` | live | quote | Create a priced quote from the matches |
 | GET | `/products` | - | `{ items: Entity[] }` | sample | quote | Product catalogue |
 | GET | `/quotes` | - | `{ items: Entity[] }` | sample | quote | Quotes |
 | GET | `/quotes/{id}` | params `id` | `Quote` | sample | quote | One quote |
-| GET | `/quotes/{id}/export` | params `id`; query `format` | (binary) | stub | quote | Export quote as DOCX or XLSX |
-| GET | `/connectors` | - | `{ items: Entity[] }` | sample | connectors | Connector catalogue with live status |
-| POST | `/connectors/{id}/connect` | params `id`; body `redirect_to` | `ConnectResult` | stub | connectors | Start OAuth; returns the redirect URL (id = provider) |
-| POST | `/connectors/{id}/disconnect` | params `id` | `{ ok }` | stub | connectors | Disconnect a provider |
-| POST | `/connectors/{id}/test` | params `id`; body `action`, `input` | `TestActionResult` | stub | connectors | Run a test action on a connected provider |
+| GET | `/quotes/{id}/export` | params `id`; query `format` | (binary) | live | quote | Export quote as DOCX or XLSX |
+| GET | `/connectors` | - | `{ items: Entity[] }` | live | connectors | Connector catalogue with live status |
+| POST | `/connectors/{id}/connect` | params `id`; body `redirect_to` | `ConnectResult` | live | connectors | Start OAuth; returns the redirect URL (id = provider) |
+| POST | `/connectors/{id}/disconnect` | params `id` | `{ ok }` | live | connectors | Disconnect a provider |
+| POST | `/connectors/{id}/test` | params `id`; body `action`, `input` | `TestActionResult` | live | connectors | Run a test action on a connected provider |
+| PATCH | `/connectors/{id}/rules` | params `id`; body `rules` | `ConnectorRulesResult` | live | connectors | Choose which events trigger which actions on a connector (id = provider) |
 | GET | `/webhooks` | - | `{ items: Entity[] }` | live | foundation | Outbound webhook endpoints |
 | POST | `/webhooks` | body `url`, `events` | `WebhookCreateResult` | live | foundation | Create endpoint; secret is returned once |
 | DELETE | `/webhooks/{id}` | params `id` | `{ ok }` | live | foundation | Delete endpoint |
@@ -104,13 +105,17 @@ Cookies: the API sets `pv_s` (HttpOnly, SameSite=Lax). From a dev server on anot
 | POST | `/api-keys` | body `name` | `ApiKeyCreateResult` | live | foundation | Create key; full key shown once |
 | DELETE | `/api-keys/{id}` | params `id` | `{ ok }` | live | foundation | Revoke key |
 | GET | `/ics` | - | `IcsInfo` | live | foundation | Calendar feed URL (deadlines of matched tenders), served at /ics/{token}.ics |
-| GET | `/agent/threads` | - | `{ items: Entity[] }` | stub | agent | Agent chat threads |
-| POST | `/agent/threads` | - | `AgentThread` | stub | agent | New thread |
-| GET | `/agent/threads/{id}/messages` | params `id` | `{ items: Entity[] }` | stub | agent | Messages in a thread |
-| POST | `/agent/threads/{id}/messages` | params `id`; body `content` | `AgentMessage` | stub | agent | Send a message (HTTP fallback; prefer the WebSocket) |
-| POST | `/agent/actions/{id}/confirm` | params `id` | `PendingAction` | stub | agent | Approve a pending agent action |
-| POST | `/agent/actions/{id}/decline` | params `id` | `PendingAction` | stub | agent | Decline a pending agent action |
-| GET | `/agent/ws` | - | (ws) | stub | agent | WebSocket upgrade to the AgentHub Durable Object (frames: AgentWsMessage) |
+| GET | `/agent/threads` | - | `{ items: Entity[] }` | live | agent | Agent chat threads |
+| POST | `/agent/threads` | - | `AgentThread` | live | agent | New thread |
+| GET | `/agent/threads/{id}/messages` | params `id` | `{ items: Entity[] }` | live | agent | Messages in a thread |
+| POST | `/agent/threads/{id}/messages` | params `id`; body `content` | `AgentMessage` | live | agent | Send a message (HTTP fallback; prefer the WebSocket) |
+| POST | `/agent/actions/{id}/confirm` | params `id` | `PendingAction` | live | agent | Approve a pending agent action |
+| POST | `/agent/actions/{id}/decline` | params `id` | `PendingAction` | live | agent | Decline a pending agent action |
+| POST | `/agent/messages` | body `content`, `thread_id` | `AgentTurnResult` | live | agent | Send a chat message without a WebSocket; runs the whole turn and returns it |
+| POST | `/agent/actions/{id}` | params `id`; body `decision` | `PendingAction` | live | agent | Confirm or decline a pending agent action ({ decision }) |
+| GET | `/agent/events` | - | (sse) | live | agent | SSE of the agent's proactive messages (event: message), for outbound subscribers such as the self-host desk agent |
+| POST | `/agent/digest` | - | `AgentDigestResult` | live | agent | Post the morning digest now |
+| GET | `/agent/ws` | - | (ws) | live | agent | WebSocket upgrade to the AgentHub Durable Object (frames: AgentWsMessage) |
 | GET | `/billing` | - | `BillingState` | sample | billing | Plan and credit balance |
 | POST | `/billing/checkout` | body `plan` | `UrlResult` | stub | billing | Dodo checkout URL |
 | POST | `/billing/portal` | - | `UrlResult` | stub | billing | Dodo customer portal URL |

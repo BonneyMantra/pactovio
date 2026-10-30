@@ -1,7 +1,12 @@
+import { SESSION_CAPS, TAVILY_BUDGET, tavilyMonthUsed } from '@pactovio/billing';
 import { HttpError } from '@pactovio/contracts';
 
-/** Judge-mode caps (BUILD-BRIEF section 4) and the Tavily daily budget. Counters live in D1 so every Worker isolate agrees. */
-export const CAPS = { freshRuns: 2, tavilyRefreshes: 3, tavilyPerDay: 30 } as const;
+/**
+ * Judge-mode caps (BUILD-BRIEF section 4) and the Tavily budgets; the numbers come from @pactovio/billing so /limits and the
+ * engine agree. Counters live in D1 so every Worker isolate agrees. `globalFreshRuns` protects the Token Factory quota
+ * (2M TPM shared by six products): only one fresh pack run may be in flight at a time, replays are free.
+ */
+export const CAPS = { freshRuns: SESSION_CAPS.runs, tavilyRefreshes: SESSION_CAPS.tavily, tavilyPerDay: TAVILY_BUDGET.day, globalFreshRuns: 1 } as const;
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -31,6 +36,7 @@ export async function refundTavilyRefresh(db: D1Database, sessionId: string | nu
 /** One live Tavily HTTP call against the daily cap (30). Shares the `tavily` counter key with GET /limits. */
 export async function consumeTavilyCall(db: D1Database): Promise<void> {
   const day = today();
+  if ((await tavilyMonthUsed({ DB: db } as never)) >= TAVILY_BUDGET.month) throw new HttpError(429, `Monthly Tavily budget of ${TAVILY_BUDGET.month} live calls used.`, 'cap_month');
   await db.prepare('INSERT INTO limits_counters (key, day, count) VALUES (?, ?, 0) ON CONFLICT(key, day) DO NOTHING').bind('tavily', day).run();
   const r = await db.prepare('UPDATE limits_counters SET count = count + 1 WHERE key = ? AND day = ? AND count < ?').bind('tavily', day, CAPS.tavilyPerDay).run();
   if ((r.meta.changes ?? 0) === 0) throw new HttpError(429, `Daily Tavily budget of ${CAPS.tavilyPerDay} live calls reached.`, 'cap_day');

@@ -1,3 +1,4 @@
+import { reserveAgentTurn } from '@pactovio/billing';
 import { endpoints, type AgentMessage, type AgentThread, type AgentTurnResult, type PendingAction } from '@pactovio/contracts';
 import { hubFetch, hubJson } from '../do/client';
 import { sessionAuth } from '../lib/auth';
@@ -9,10 +10,14 @@ export const register: Register = (r) => {
   r.on(endpoints.createAgentThread, ({ env, auth }) => hubJson<AgentThread>(env, auth, '/threads', { method: 'POST', body: {} }));
   r.on(endpoints.listAgentMessages, ({ env, auth, params }) => hubJson<{ items: AgentMessage[] }>(env, auth, `/threads/${encodeURIComponent(params.id)}/messages`));
   r.on(endpoints.sendAgentMessage, async ({ env, auth, params, body }) => {
+    await reserveAgentTurn(env, auth.sessionId ?? null);
     const turn = await hubJson<AgentTurnResult>(env, auth, '/message', { body: { content: body.content, thread_id: params.id } });
     return [...turn.messages].reverse().find((m) => m.role === 'assistant' && !m.pending_action) ?? turn.messages[turn.messages.length - 1]!;
   });
-  r.on(endpoints.postAgentMessage, ({ env, auth, body }) => hubJson<AgentTurnResult>(env, auth, '/message', { body }));
+  r.on(endpoints.postAgentMessage, async ({ env, auth, body }) => {
+    await reserveAgentTurn(env, auth.sessionId ?? null); // D1-backed 10/min per judge session, shared by every isolate (the hub keeps its own window for sockets)
+    return hubJson<AgentTurnResult>(env, auth, '/message', { body });
+  });
   r.on(endpoints.confirmAgentAction, ({ env, auth, params }) => hubJson<PendingAction>(env, auth, `/actions/${encodeURIComponent(params.id)}`, { body: { decision: 'confirm' } }));
   r.on(endpoints.declineAgentAction, ({ env, auth, params }) => hubJson<PendingAction>(env, auth, `/actions/${encodeURIComponent(params.id)}`, { body: { decision: 'decline' } }));
   r.on(endpoints.decideAgentAction, ({ env, auth, params, body }) => hubJson<PendingAction>(env, auth, `/actions/${encodeURIComponent(params.id)}`, { body: { decision: body.decision } }));

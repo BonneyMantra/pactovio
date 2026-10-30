@@ -10,7 +10,7 @@ export const register: Register = (r) => {
   r.on(endpoints.listTenders, async ({ db, workspaceId, query }) => {
     const where = ['m.workspace_id = ?'];
     const b: unknown[] = [workspaceId];
-    if (query.status) { where.push('m.status = ?'); b.push(query.status); }
+    if (query.status) { where.push('m.status = ?'); b.push(query.status); } else where.push("m.status != 'dismissed'");
     if (query.country) { where.push('t.country = ?'); b.push(query.country); }
     if (query.min_fit !== undefined) { where.push('m.fit_score >= ?'); b.push(query.min_fit); }
     if (query.q) { where.push('(t.title LIKE ? OR t.buyer LIKE ?)'); b.push(`%${query.q}%`, `%${query.q}%`); }

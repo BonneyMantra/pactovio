@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
-import { chat, chatJSON, costUsd, createLimiter, rankByCosine, stripThinking } from '../src';
+import { chat, chatJSON, costUsd, cosine, createLimiter, rankByCosine, stripThinking } from '../src';
 
 const env = { NEBIUS_API_KEY: 'test-key' };
 function fakeFetch(replies: string[], seen: Record<string, unknown>[] = []) {
@@ -61,6 +61,11 @@ describe('helpers', () => {
     await Promise.all(Array.from({ length: 6 }, () => run(async () => { peak = Math.max(peak, ++active); await new Promise((r) => setTimeout(r, 5)); active--; })));
     expect(peak).toBe(2);
   });
+  it('cosine of vectors with different lengths is 0, never a partial dot product (256-dim rows beside 4096-dim ones)', () => {
+    expect(cosine([1, 0, 0, 0], [1, 0])).toBe(0);
+    expect(cosine([1, 2], [1, 2])).toBeCloseTo(1);
+  });
+
   it('ranks by cosine and prices cached tokens lower', () => {
     const ranked = rankByCosine([1, 0], [{ item: 'a', embedding: [0, 1] }, { item: 'b', embedding: [1, 0.1] }], 1);
     expect(ranked[0]!.item).toBe('b');

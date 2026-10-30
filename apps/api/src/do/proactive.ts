@@ -4,7 +4,7 @@ import { runAction } from '@pactovio/connectors';
 import { BASE_URL, type HubDeps } from './deps';
 import { INBOX_THREAD, toPending } from './store';
 
-const CHAT_PROVIDERS = ['slack', 'teams', 'microsoftteams'];
+const CHAT_PROVIDERS = ['slack', 'microsoft_teams', 'teams', 'microsoftteams'];
 
 /** Add what the pure mapper needs but the event payload may lack: tender title, buyer, deadline, fit. */
 async function enrich(deps: HubDeps, event: PactovioEvent): Promise<Record<string, unknown>> {

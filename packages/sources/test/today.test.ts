@@ -27,12 +27,12 @@ describe('GET /api/today after a scan', () => {
     const res = await app.fetch(new Request('http://localhost/api/today'), env, ctx);
     expect(res.status).toBe(200);
     const feed = TodayFeed.parse(await res.json());
-    const fits = feed.top_matches.map((m) => m.match.fit_score);
+    const fits = feed.top_matches.map((m) => m.match!.fit_score);
     expect(fits).toEqual([...fits].sort((a, b) => b - a));
     const refs = feed.top_matches.map((m) => m.tender.source_ref);
     expect(refs[0]).toBe('102252-2026'); // best fit first
     expect(refs).not.toContain('102124-2026'); // fit 40 is stored as dismissed, not shown
-    expect(feed.top_matches.every((m) => m.match.status !== 'dismissed')).toBe(true);
+    expect(feed.top_matches.every((m) => m.match!.status !== 'dismissed')).toBe(true);
     expect(feed.intakes.some((i) => i.source === 'scan' && i.title.includes('London Luton'))).toBe(true);
     expect(feed.counts.new_matches).toBeGreaterThan(0);
   }, 60_000);

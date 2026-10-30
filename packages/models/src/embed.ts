@@ -18,7 +18,9 @@ export async function embed(texts: string[], o: CallOptions): Promise<number[][]
   return out;
 }
 
+/** Cosine similarity. Vectors of different lengths (e.g. 256-dim Matryoshka rows beside 4096-dim ones) are not comparable: score 0. */
 export function cosine(a: number[], b: number[]): number {
+  if (a.length !== b.length) return 0;
   let dot = 0, na = 0, nb = 0;
   for (let i = 0; i < a.length; i++) {
     dot += a[i]! * b[i]!;

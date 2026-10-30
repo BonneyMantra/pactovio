@@ -1,4 +1,4 @@
-import { costUsd, makeClient, modelFor, stripThinking, type ChatMessage } from '@pactovio/models';
+import { costUsd, isModelUnavailable, makeClient, modelFor, stripThinking, TEXT_FALLBACK_MODEL, type ChatMessage } from '@pactovio/models';
 import type { Env } from '@pactovio/contracts/env';
 import { toolJsonSchema } from './gate';
 import { AGENT_CAPS, type AgentTool } from './types';
@@ -133,7 +133,8 @@ async function streamStep(p: StreamLoopParams, model: string, messages: ChatMess
 export async function streamToolLoop(p: StreamLoopParams): Promise<StreamLoopResult> {
   const specs = p.tools.map((t) => ({ type: 'function', function: { name: t.name, description: t.description, parameters: toolJsonSchema(t as AgentTool) } }));
   const messages = [...p.messages];
-  let role = 'agent' as 'agent' | 'reason';
+  // agent model -> (404 only) text fallback -> reason model. Two other failures skip straight to the reason model.
+  let role = 'agent' as 'agent' | 'text' | 'reason';
   let failures = 0;
   let fellBack = false;
   let tokensIn = 0, tokensOut = 0, cost = 0, modelCalls = 0;
@@ -142,11 +143,11 @@ export async function streamToolLoop(p: StreamLoopParams): Promise<StreamLoopRes
   let steps = 0;
   const fail = (): void => {
     failures++;
-    if (failures >= 2 && role === 'agent') { role = 'reason'; fellBack = true; failures = 0; }
+    if (failures >= 2 && role !== 'reason') { role = 'reason'; fellBack = true; failures = 0; }
   };
   let guard = 0;
   while (steps < maxSteps && guard++ < maxSteps + 6) {
-    model = modelFor(p.env, role);
+    model = role === 'text' ? TEXT_FALLBACK_MODEL : modelFor(p.env, role);
     let out: StepOut;
     try {
       modelCalls++;
@@ -154,6 +155,7 @@ export async function streamToolLoop(p: StreamLoopParams): Promise<StreamLoopRes
     } catch (e) {
       if (role === 'reason' && failures >= 1) throw e;
       if (role === 'reason') { failures++; continue; }
+      if (isModelUnavailable(e)) { role = role === 'agent' ? 'text' : 'reason'; fellBack = true; failures = 0; continue; }
       fail();
       continue;
     }

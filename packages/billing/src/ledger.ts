@@ -60,3 +60,10 @@ export async function chargeCredits(env: Env, workspaceId: string, credits: numb
   }
   return balance(env, workspaceId);
 }
+
+/** Give back credits for an action that failed after `chargeCredits` (idempotent by `ref`). Sample workspaces were never charged, so nothing is returned to them. */
+export async function refundCredits(env: Env, workspaceId: string, credits: number, reason: string, ref: string): Promise<void> {
+  const w = await workspaceInfo(env, workspaceId);
+  if (w.sample || credits <= 0) return;
+  await grantCredits(env, workspaceId, credits, reason, { ref });
+}

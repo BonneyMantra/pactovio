@@ -156,10 +156,15 @@ export async function notifyMatches(env: Env, matches: NewMatch[]): Promise<void
   }
 }
 
-export async function finishScan(env: Env, stats: ScanStats, now: Date = new Date()): Promise<void> {
-  await bumpCounters(env, isoDay(now), {
+export async function finishScan(env: Env, stats: ScanStats, now: Date = new Date(), workspaceId?: string): Promise<void> {
+  const day = isoDay(now);
+  await bumpCounters(env, day, {
     runs: 1, notices: stats.scanned, new_tenders: stats.new_tenders, triaged: stats.triaged, matched: stats.matched, packs: stats.packs, errors: stats.errors.length,
   });
+  // Every nightly scan leaves a runs row kind='scan' (read by /limits last_scan), even when no workspace got as far as triage.
+  if (workspaceId && !(await env.DB.prepare("SELECT 1 AS x FROM runs WHERE kind = 'scan' AND subject_id = ?").bind(day).first())) {
+    await recordScanRun(env, workspaceId, day, now.toISOString(), [], stats.errors.length > 0 && stats.triaged === 0);
+  }
 }
 
 /** Whole nightly scan in one call (tests, dev trigger). The ScanWorkflow runs the same stages as separate durable steps. */
@@ -188,6 +193,6 @@ export async function runNightlyScan(env: Env, opts: ScanOptions = {}): Promise<
     }
   }
   await notifyMatches(env, stats.matches);
-  await finishScan(env, stats, opts.now);
+  await finishScan(env, stats, opts.now, workspaces[0]?.id);
   return stats;
 }

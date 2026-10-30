@@ -80,6 +80,30 @@ describe('streamToolLoop', () => {
     expect(models(seen)).toEqual(['agent-model', 'agent-model', 'reason-model']);
   });
 
+  it('a 404 for the agent model (withdrawn) moves to the text fallback at once, then to MODEL_REASON if that is gone too', async () => {
+    const seen: { model: string; body: Record<string, unknown> }[] = [];
+    const gone = () => new Response(JSON.stringify({ error: { message: 'The model does not exist' } }), { status: 404, headers: { 'content-type': 'application/json' } });
+    const f = (async (_u: string, init: RequestInit) => {
+      const body = JSON.parse(String(init.body)) as Record<string, unknown>;
+      seen.push({ model: String(body.model), body });
+      return body.model === 'agent-model' ? gone() : text('Answered by the text fallback.');
+    }) as unknown as typeof fetch;
+    const r = await streamToolLoop({ ...base, fetch: f, runTool: vi.fn() });
+    expect(models(seen)).toEqual(['agent-model', 'nvidia/nemotron-3-super-120b-a12b']);
+    expect(r.fellBack).toBe(true);
+    expect(r.text).toBe('Answered by the text fallback.');
+    expect(seen[1]!.body.chat_template_kwargs).toEqual({ enable_thinking: false });
+    const seen2: string[] = [];
+    const f2 = (async (_u: string, init: RequestInit) => {
+      const m = String((JSON.parse(String(init.body)) as { model: string }).model);
+      seen2.push(m);
+      return m === 'reason-model' ? text('Reasoning answered.') : gone();
+    }) as unknown as typeof fetch;
+    const r2 = await streamToolLoop({ ...base, fetch: f2, runTool: vi.fn() });
+    expect(seen2).toEqual(['agent-model', 'nvidia/nemotron-3-super-120b-a12b', 'reason-model']);
+    expect(r2.text).toBe('Reasoning answered.');
+  });
+
   it('malformed tool arguments count as failures and trigger the same fallback', async () => {
     const bad = () => sse([delta({ tool_calls: [{ index: 0, id: 'c', type: 'function', function: { name: 'get_tender', arguments: '{"tender_id": ' } }] }), delta({}, { prompt_tokens: 5, completion_tokens: 5 })]);
     const seen: { model: string; body: Record<string, unknown> }[] = [];

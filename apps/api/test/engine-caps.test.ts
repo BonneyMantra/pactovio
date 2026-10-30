@@ -33,15 +33,37 @@ const finishAll = () => env.DB.prepare("UPDATE runs SET status = 'completed' WHE
 describe('judge caps: fresh pack runs', () => {
   it('allows exactly 2 fresh runs per session, the third is a 429 cap_session', async () => {
     const s = await session();
-    await startPackRunImpl(env, { workspaceId: HARBOUR, tenderId: TEAGASC, sessionId: s });
+    await startPackRunImpl(env, { workspaceId: HARBOUR, tenderId: TEAGASC, sessionId: s, replay: false });
     await finishAll();
-    await startPackRunImpl(env, { workspaceId: HARBOUR, tenderId: TEAGASC, sessionId: s });
+    await startPackRunImpl(env, { workspaceId: HARBOUR, tenderId: TEAGASC, sessionId: s, replay: false });
     await finishAll();
-    await expect(startPackRunImpl(env, { workspaceId: HARBOUR, tenderId: TEAGASC, sessionId: s })).rejects.toMatchObject({ status: 429, code: 'cap_session' });
+    await expect(startPackRunImpl(env, { workspaceId: HARBOUR, tenderId: TEAGASC, sessionId: s, replay: false })).rejects.toMatchObject({ status: 429, code: 'cap_session' });
     expect((await used(s)).runs_used).toBe(CAPS.freshRuns);
     // a refused run leaves no run row behind
     const n = await env.DB.prepare("SELECT COUNT(*) AS n FROM runs WHERE status = 'queued'").first<{ n: number }>();
     expect(n!.n).toBe(0);
+  });
+
+  it('a judge session that does not say replay or fresh gets the recorded replay, free', async () => {
+    await finishAll();
+    const s = await session();
+    const id = await startPackRunImpl(env, { workspaceId: HARBOUR, tenderId: TEAGASC, sessionId: s });
+    const row = await env.DB.prepare('SELECT replay FROM runs WHERE id = ?').bind(id).first<{ replay: number }>();
+    expect(row!.replay).toBe(1);
+    expect((await used(s)).runs_used).toBe(0);
+    await finishAll();
+  });
+
+  it('only one fresh run may be in flight globally (shared model quota); a replay is still allowed and the loser is not charged', async () => {
+    await finishAll();
+    const a = await session();
+    const b = await session();
+    await startPackRunImpl(env, { workspaceId: HARBOUR, tenderId: TEAGASC, sessionId: a, replay: false });
+    await expect(startPackRunImpl(env, { workspaceId: 'ws_kestrel_sensing', tenderId: 'tnd_sample_meteireann_701573', sessionId: b, replay: false }))
+      .rejects.toMatchObject({ status: 429, code: 'cap_global' });
+    expect((await used(b)).runs_used).toBe(0);
+    await expect(startPackRunImpl(env, { workspaceId: HARBOUR, tenderId: TEAGASC, sessionId: b, replay: true })).rejects.toMatchObject({ status: 409 }); // same tender busy
+    await finishAll();
   });
 
   it('replays never count against the cap, however many are played', async () => {
@@ -65,15 +87,15 @@ describe('judge caps: fresh pack runs', () => {
   it('refunds the cap when the workflow cannot be started', async () => {
     const s = await session();
     const broken = { ...env, PACK_RUN: { create: async () => { throw new Error('binding down'); } } as unknown as Workflow } as Env;
-    await expect(startPackRunImpl(broken, { workspaceId: HARBOUR, tenderId: TEAGASC, sessionId: s })).rejects.toMatchObject({ status: 502 });
+    await expect(startPackRunImpl(broken, { workspaceId: HARBOUR, tenderId: TEAGASC, sessionId: s, replay: false })).rejects.toMatchObject({ status: 502 });
     expect((await used(s)).runs_used).toBe(0);
   });
 
   it('refuses a second run while one is in progress (409) without spending the cap', async () => {
     await finishAll();
     const s = await session();
-    await startPackRunImpl(env, { workspaceId: HARBOUR, tenderId: TEAGASC, sessionId: s });
-    await expect(startPackRunImpl(env, { workspaceId: HARBOUR, tenderId: TEAGASC, sessionId: s })).rejects.toMatchObject({ status: 409 });
+    await startPackRunImpl(env, { workspaceId: HARBOUR, tenderId: TEAGASC, sessionId: s, replay: false });
+    await expect(startPackRunImpl(env, { workspaceId: HARBOUR, tenderId: TEAGASC, sessionId: s, replay: false })).rejects.toMatchObject({ status: 409 });
     expect((await used(s)).runs_used).toBe(1);
     await finishAll();
   });

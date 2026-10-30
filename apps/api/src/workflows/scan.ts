@@ -58,7 +58,7 @@ export class ScanWorkflow extends WorkflowEntrypoint<Env, ScanParams> {
     }
 
     await run('notify', NO_RETRY, () => notifyMatches(env, stats.matches));
-    await run('finish', NO_RETRY, () => finishScan(env, stats));
+    await run('finish', NO_RETRY, () => finishScan(env, stats, new Date(), workspaces[0]?.id));
     return stats;
   }
 }
