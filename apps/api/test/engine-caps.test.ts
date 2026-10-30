@@ -4,6 +4,9 @@ import type { Env } from '@pactovio/contracts/env';
 import { buyerIntelImpl, CAPS, consumeFreshRun, consumeTavilyCall, consumeTavilyRefresh } from '@pactovio/engine';
 import { startPackRunImpl } from '../../../packages/engine/src/start';
 import { makeEnv } from './helpers';
+// responses recorded from the live Tavily API (one search, one extract) for the Teagasc buyer
+import recordedSearch from '../../../packages/engine/test/fixtures/tavily-teagasc-search.json';
+import recordedExtract from '../../../packages/engine/test/fixtures/tavily-teagasc-extract.json';
 
 const HARBOUR = 'ws_harbour_digital';
 const TEAGASC = 'tnd_sample_teagasc_p4941';
@@ -105,11 +108,11 @@ describe('buyer intel (recorded Tavily fixtures)', () => {
   const fetchFake = (async (url: string | URL | Request, init?: RequestInit) => {
     const u = String(url);
     calls.push(u);
-    if (u.includes('api.tavily.com/search')) return Response.json({ results: [{ title: 'About Teagasc', url: 'https://www.teagasc.ie/about/', content: 'Teagasc is the Agriculture and Food Development Authority, the national body providing integrated research, advisory and training services to the agriculture and food industry and rural communities.' }, { title: 'Digital services', url: 'https://www.teagasc.ie/digital/', content: 'Teagasc runs the Nutrient Management Planner and PastureBase Ireland web applications for advisors and farmers.' }] });
-    if (u.includes('api.tavily.com/extract')) return Response.json({ results: [{ url: 'https://www.teagasc.ie/about/', raw_content: 'Teagasc, the Agriculture and Food Development Authority, provides research, advisory and education services.' }] });
+    if (u.includes('api.tavily.com/search')) return Response.json({ results: recordedSearch });
+    if (u.includes('api.tavily.com/extract')) return Response.json({ results: recordedExtract.map((x) => ({ url: x.url, raw_content: x.text })) });
     if (u.includes('/chat/completions')) {
       const body = JSON.parse(String(init?.body ?? '{}')) as { model: string };
-      return Response.json({ id: 'x', object: 'chat.completion', created: 1, model: body.model, choices: [{ index: 0, finish_reason: 'stop', message: { role: 'assistant', content: JSON.stringify({ summary: 'Teagasc is the Irish agriculture and food development authority.', facts: [{ label: 'Remit', value: 'Research, advisory and training for agriculture and food', source_idx: 0 }, { label: 'Web applications', value: 'Nutrient Management Planner and PastureBase Ireland', source_idx: 1 }, { label: 'Bogus', value: 'dropped: source index out of range', source_idx: 9 }] }) } }], usage: { prompt_tokens: 900, completion_tokens: 120 } });
+      return Response.json({ id: 'x', object: 'chat.completion', created: 1, model: body.model, choices: [{ index: 0, finish_reason: 'stop', message: { role: 'assistant', content: JSON.stringify({ summary: 'Teagasc is the Irish agriculture and food development authority.', facts: [{ label: 'Remit', value: 'Agriculture and food development authority', source_idx: 0 }, { label: 'Research portfolio', value: 'About 300 research projects', source_idx: 1 }, { label: 'Bogus', value: 'dropped: source index out of range', source_idx: 9 }] }) } }], usage: { prompt_tokens: 900, completion_tokens: 120 } });
     }
     return new Response('unexpected', { status: 500 });
   }) as typeof fetch;
@@ -129,13 +132,14 @@ describe('buyer intel (recorded Tavily fixtures)', () => {
     calls.length = 0;
     const intel = await buyerIntelImpl(e(), 'teagasc', { refresh: true, sessionId: s, fetch: fetchFake });
     expect(calls.filter((c) => c.includes('tavily')).length).toBe(2);
-    expect(intel.sources).toHaveLength(2);
-    expect(intel.facts.map((f) => f.label)).toEqual(['Remit', 'Web applications']);
+    expect(intel.sources).toHaveLength(recordedSearch.length);
+    expect(intel.facts.map((f) => f.label)).toEqual(['Remit', 'Research portfolio']);
     expect((await used(s)).tavily_used).toBe(1);
     const day = await env.DB.prepare("SELECT count FROM limits_counters WHERE key = 'tavily'").first<{ count: number }>();
     expect(day!.count).toBe(2);
     const stored = await env.DB.prepare('SELECT summary FROM buyer_intel WHERE buyer_key = ?').bind('teagasc').first<{ summary: string }>();
     expect(stored!.summary).toContain('agriculture');
+    expect(intel.sources.map((x) => x.url)).toContain('https://teagasc.ie');
 
     calls.length = 0;
     await buyerIntelImpl(e(), 'teagasc', { refresh: true, sessionId: s, fetch: fetchFake });

@@ -81,7 +81,7 @@ export async function runReplay(rc: RunCtx, step: Stepper): Promise<void> {
   });
   for (const [i, s] of steps.entries()) {
     await step(`replay-step-${i + 1}`, async () => {
-      await sleep(Math.min(1500, Math.round(s.ms / 15)));
+      await sleep(Math.min(700, Math.round(s.ms / 30)));
       await logStep(env, rc.runId, rc.workspaceId, { purpose: s.purpose, model: s.model ?? '', status: s.status, tokensIn: s.tokens_in, tokensOut: s.tokens_out, tokensCached: s.tokens_cached, ms: s.ms, costUsd: s.cost_usd, summary: s.summary ?? undefined });
       return true;
     });

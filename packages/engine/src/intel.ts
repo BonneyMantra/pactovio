@@ -59,7 +59,9 @@ export async function buyerIntelImpl(env: Env, buyerKey: string, opts: { refresh
   if (!searchCached) await consumeTavilyRefresh(env.DB, opts.sessionId);
   try {
     const search = await cached(env, qkey, async () => (await tavilyPost<{ results: TavilyResult[] }>(env, '/search', { query, search_depth: 'basic', max_results: 5, include_answer: false }, f)).results.map((r) => ({ title: r.title, url: r.url, content: r.content.slice(0, 1200) })));
-    const top = search.value.slice(0, 2).map((r) => r.url);
+    // read the buyer's own site first, then the best-ranked other source
+    const own = (u: string) => { try { return new URL(u).hostname.replace(/[^a-z0-9]/g, '').includes(buyerKey.replace(/[^a-z0-9]/g, '')); } catch { return false; } };
+    const top = [...search.value].sort((a, b) => Number(own(b.url)) - Number(own(a.url))).slice(0, 2).map((r) => r.url);
     const xkey = `tavily:x:${await sha256Hex(top.join('|'))}`;
     const extract = top.length
       ? await cached(env, xkey, async () => (await tavilyPost<{ results: { url: string; raw_content: string }[] }>(env, '/extract', { urls: top }, f)).results.map((r) => ({ url: r.url, text: r.raw_content.slice(0, 6000) })))
