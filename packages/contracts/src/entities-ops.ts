@@ -48,11 +48,25 @@ export const PriceRule = z.object({
 });
 export type PriceRule = z.infer<typeof PriceRule>;
 
+export const SpecCitation = z.object({
+  doc: z.string(),
+  doc_id: z.string().nullable(),
+  page: z.number().int().nullable(),
+  quote: z.string(),
+});
+export const RequirementResult = z.object({
+  status: z.enum(['MET', 'PARTIAL', 'GAP']),
+  sku: z.string().nullable(),
+  note: z.string(),
+  citation: SpecCitation.nullable(),
+});
 export const DesignRequirement = z.object({
   key: z.string(),
   text: z.string(),
   value: z.string().optional(),
   mandatory: z.boolean().default(true),
+  /** Best match across the catalogue, written by matchDesignRequest. */
+  result: RequirementResult.optional(),
 });
 export const ProductMatch = z.object({
   product_id: z.string(),
@@ -61,6 +75,9 @@ export const ProductMatch = z.object({
   verdict: z.enum(['FIT', 'PARTIAL', 'NO_FIT']),
   reasons: z.array(z.string()),
   gaps: z.array(z.string()),
+  /** Proposed quote quantity for this product (written by matchDesignRequest). */
+  proposed_qty: z.number().int().optional(),
+  citations: z.array(SpecCitation).optional(),
 });
 export const DesignRequest = z.object({
   id: z.string(),

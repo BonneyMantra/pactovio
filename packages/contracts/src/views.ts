@@ -93,7 +93,13 @@ export const IntakeCreateBody = z.object({
 export const IntakeCreateResult = z.object({ intake_id: z.string(), status: z.string() });
 export const IntakeDetail = z.object({ intake: Intake, documents: z.array(Document) });
 
-export const QuoteFromDesignBody = z.object({ product_ids: z.array(z.string()).optional(), qty: z.number().int().optional() });
+export const QuoteFromDesignBody = z.object({
+  product_ids: z.array(z.string()).optional(),
+  qty: z.number().int().positive().optional(),
+  buyer_country: z.string().length(2).optional(),
+  b2b: z.boolean().optional(),
+  vat_registered: z.boolean().optional(),
+});
 export const ExportQuoteQuery = z.object({ format: z.enum(['docx', 'xlsx']).default('docx') });
 
 export const ConnectBody = z.object({ redirect_to: z.string().optional() });
