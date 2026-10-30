@@ -1,19 +1,29 @@
-import { endpoints } from '@pactovio/contracts';
+import { endpoints, type AgentMessage, type AgentThread, type AgentTurnResult, type PendingAction } from '@pactovio/contracts';
+import { hubFetch, hubJson } from '../do/client';
 import { sessionAuth } from '../lib/auth';
 import { errorResponse, type Register, type Router } from '../lib/router';
+import { mountActionLinks } from './agent-links';
 
 export const register: Register = (r) => {
-  r.stub(endpoints.listAgentThreads, 'agent threads');
-  r.stub(endpoints.createAgentThread, 'agent threads');
-  r.stub(endpoints.listAgentMessages, 'agent messages');
-  r.stub(endpoints.sendAgentMessage, 'agent chat');
-  r.stub(endpoints.confirmAgentAction, 'agent action confirm');
-  r.stub(endpoints.declineAgentAction, 'agent action decline');
-  r.stub(endpoints.postAgentMessage, 'agent chat');
-  r.stub(endpoints.decideAgentAction, 'agent action');
-  r.stub(endpoints.streamAgentEvents, 'agent events');
-  r.stub(endpoints.runAgentDigest, 'agent digest');
+  r.on(endpoints.listAgentThreads, ({ env, auth }) => hubJson<{ items: AgentThread[] }>(env, auth, '/threads'));
+  r.on(endpoints.createAgentThread, ({ env, auth }) => hubJson<AgentThread>(env, auth, '/threads', { method: 'POST', body: {} }));
+  r.on(endpoints.listAgentMessages, ({ env, auth, params }) => hubJson<{ items: AgentMessage[] }>(env, auth, `/threads/${encodeURIComponent(params.id)}/messages`));
+  r.on(endpoints.sendAgentMessage, async ({ env, auth, params, body }) => {
+    const turn = await hubJson<AgentTurnResult>(env, auth, '/message', { body: { content: body.content, thread_id: params.id } });
+    return [...turn.messages].reverse().find((m) => m.role === 'assistant' && !m.pending_action) ?? turn.messages[turn.messages.length - 1]!;
+  });
+  r.on(endpoints.postAgentMessage, ({ env, auth, body }) => hubJson<AgentTurnResult>(env, auth, '/message', { body }));
+  r.on(endpoints.confirmAgentAction, ({ env, auth, params }) => hubJson<PendingAction>(env, auth, `/actions/${encodeURIComponent(params.id)}`, { body: { decision: 'confirm' } }));
+  r.on(endpoints.declineAgentAction, ({ env, auth, params }) => hubJson<PendingAction>(env, auth, `/actions/${encodeURIComponent(params.id)}`, { body: { decision: 'decline' } }));
+  r.on(endpoints.decideAgentAction, ({ env, auth, params, body }) => hubJson<PendingAction>(env, auth, `/actions/${encodeURIComponent(params.id)}`, { body: { decision: body.decision } }));
+  r.on(endpoints.runAgentDigest, ({ env, auth }) => hubJson(env, auth, '/digest', { method: 'POST', body: {} }));
+  // SSE of proactive messages for outbound subscribers (the Mac desk agent uses /v1 with an API key). `?since=<message id>` resumes.
+  r.on(endpoints.streamAgentEvents, async ({ c, env, auth }) => {
+    const since = c.req.query('since') ?? c.req.header('last-event-id');
+    return hubFetch(env, auth, `/events${since ? `?since=${encodeURIComponent(since)}` : ''}`);
+  });
   mountSocket(r);
+  if (r.mode === 'session') mountActionLinks(r);
 };
 
 /** WebSocket upgrade -> the workspace's AgentHub DO. Registered directly (not via r.on) because it returns a 101. */
@@ -29,6 +39,7 @@ function mountSocket(r: Router) {
       const url = new URL(c.req.url);
       url.pathname = '/ws';
       url.searchParams.set('workspace', auth.workspaceId);
+      url.searchParams.set('session', auth.sessionId ?? '');
       return stub.fetch(new Request(url, c.req.raw));
     } catch (e) {
       return errorResponse(c, e);

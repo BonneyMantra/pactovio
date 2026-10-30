@@ -1,22 +1,10 @@
-import type { z } from 'zod';
-import type { Env } from '@pactovio/contracts/env';
-
-export interface AgentToolCtx {
-  workspaceId: string;
-  sessionId?: string;
-  threadId?: string;
-  /** Tools with side effects must call this and return; the action runs only after the user confirms. */
-  requestApproval?: (summary: string, input: Record<string, unknown>) => Promise<{ approved: boolean }>;
-}
-
-export interface AgentTool<I extends z.ZodType = z.ZodType> {
-  name: string;
-  description: string;
-  input: I;
-  /** true if the tool changes state or contacts a third party: AgentHub asks the user first, MCP exposes it with a confirmation hint. */
-  mutating?: boolean;
-  run(env: Env, ctx: AgentToolCtx, input: z.infer<I>): Promise<unknown>;
-}
-
-/** Shared by AgentHub chat and the MCP server. Lane: agent fills this in. */
-export const agentTools: AgentTool[] = [];
+export * from './types';
+export { agentTools } from './tools';
+export { getTool, invokeTool, requiresConfirmation, toolJsonSchema } from './gate';
+export { mapEvent, type EventLike, type ProactiveAction, type ProactiveMessage } from './events-map';
+export { DEADLINE_DAYS, CERT_DAYS, DIGEST_UTC, bucket, dueCertificateNudges, dueDeadlineReminders, mytDate, nextDigestAt, renderDigest, type Reminder, type TodayLike } from './schedule';
+export { checkTokenBudget, checkTurnCap, type CapResult } from './caps';
+export { signDecision, verifyDecision, type Decision } from './links';
+export { systemPrompt } from './prompt';
+export { streamToolLoop, ThinkFilter, type StreamLoopParams, type StreamLoopResult, type ToolRunResult } from './loop';
+export { formatMoney, formatEuros, formatDeadline, clip, plural } from './format';

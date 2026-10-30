@@ -137,6 +137,9 @@ export const AgentMessage = z.object({
   pending_action: PendingAction.optional(),
   at: Iso,
 });
+export type AgentThread = z.infer<typeof AgentThread>;
+export type PendingAction = z.infer<typeof PendingAction>;
+export type AgentMessage = z.infer<typeof AgentMessage>;
 export const AgentMessageBody = z.object({ content: z.string().min(1).max(8000) });
 /** POST /agent/messages: like AgentMessageBody, thread optional (a new thread is created when omitted). */
 export const AgentChatBody = z.object({ content: z.string().min(1).max(8000), thread_id: z.string().optional() });
@@ -146,6 +149,7 @@ export const AgentTurnResult = z.object({
   messages: z.array(AgentMessage),
   pending_actions: z.array(PendingAction),
 });
+export type AgentTurnResult = z.infer<typeof AgentTurnResult>;
 export const AgentActionDecisionBody = z.object({ decision: z.enum(['confirm', 'decline']) });
 export const AgentDigestResult = z.object({ thread_id: z.string(), message: AgentMessage });
 /**
