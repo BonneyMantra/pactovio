@@ -1,0 +1,25 @@
+{
+  "id": "mail_h_rfp_planning",
+  "workspace_id": "ws_harbour_digital",
+  "to": "bids@harbourdigital.example",
+  "from": {
+    "name": "Fionnuala Rice",
+    "address": "procurement@corran-cc.example"
+  },
+  "subject": "Request for Proposals: Planning enforcement case management web application (RFP CCC-2026-14)",
+  "date": "2026-10-26T10:30:00Z",
+  "body_text": "Dear Sir or Madam,\n\nCorran County Council invites proposals for the design, build and four-year support of a planning enforcement case management web application. The full Request for Proposals is attached (PDF, 3 pages). Your response should reach us by 4 December 2026, 12:00 noon.\n\nPlease acknowledge receipt, and send any clarification questions by 13 November 2026.\n\nFionnuala Rice\nProcurement Officer, Corran County Council\nprocurement@corran-cc.example",
+  "attachments": [
+    {
+      "filename": "RFP-CCC-2026-14-planning-enforcement.pdf",
+      "mime": "application/pdf",
+      "path": "attachments/RFP-CCC-2026-14-planning-enforcement.pdf"
+    }
+  ],
+  "expected": {
+    "door": "rfp",
+    "reason": "Named buyer issuing an RFP with a deadline and an attached document",
+    "buyer_country": "IE",
+    "buyer_b2b": true
+  }
+}

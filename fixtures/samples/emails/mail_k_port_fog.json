@@ -1,0 +1,19 @@
+{
+  "id": "mail_k_port_fog",
+  "workspace_id": "ws_kestrel_sensing",
+  "to": "sales@kestrel-sensing.example",
+  "from": {
+    "name": "Ciarán Doyle",
+    "address": "ciaran.doyle@westbay-port.example"
+  },
+  "subject": "Fog monitoring for the Berth 4 to 9 approach: can you design and quote?",
+  "date": "2026-10-27T09:14:00Z",
+  "body_text": "Hello,\n\nWestbay Port Authority is replacing manual fog observations on the quay with continuous visibility monitoring. Our harbour master needs early warning before visibility on the approach channel drops below 500 m.\n\nRequirements as they stand:\n- Six monitoring stations along Berths 4 to 9.\n- Visibility measurement range from 10 m up to at least 10 km, accuracy better than 10%.\n- Our operations system polls over RS-485 Modbus RTU, so the sensor, or a gateway beside it, must speak Modbus RTU.\n- Backhaul over 4G with a backup SIM. There is no fixed line on the quay edge.\n- Stations are solar powered; budget is under 15 W continuous per station, including the gateway.\n- Exposed to salt spray on the quay structure: IP66 or better, marine grade.\n- One-minute data logging with local storage if the link drops.\n- CE marked equipment; mounting masts of about 3 m.\n- Installation and commissioning on site, and a hosted dashboard for the harbour master.\n- Delivery within 12 weeks of order.\n\nPlease send a design and a priced quote in EUR. We are a public body registered in Ireland.\n\nKind regards,\nCiarán Doyle\nMarine Systems Engineer, Westbay Port Authority\nWestbay Harbour Office, Westbay, Co. Mayo, Ireland",
+  "attachments": [],
+  "expected": {
+    "door": "design",
+    "reason": "Technical product requirements and a request to design and quote",
+    "buyer_country": "IE",
+    "buyer_b2b": true
+  }
+}

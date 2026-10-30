@@ -1,0 +1,17 @@
+{
+  "id": "mail_k_newsletter",
+  "workspace_id": "ws_kestrel_sensing",
+  "to": "sales@kestrel-sensing.example",
+  "from": {
+    "name": "Meteo Instruments Weekly",
+    "address": "newsletter@meteo-instruments-weekly.example"
+  },
+  "subject": "This week: 5 new fog sensors reviewed, WMO CIMO guide update, and a webinar on icing",
+  "date": "2026-10-28T06:00:00Z",
+  "body_text": "Meteo Instruments Weekly  |  Issue 212\n\nIn this issue\n- Review: five forward-scatter visibility sensors compared\n- WMO CIMO Guide 2026 edition: what changed for visibility\n- Webinar (12 Nov, 15:00 GMT): Measuring icing on wind turbines\n- Jobs board and trade-show calendar\n\nAdvertise with us: reach 18,000 meteorology professionals. Reply to this email for the 2027 media pack.\n\nYou are receiving this because you subscribed at meteo-instruments-weekly.example. Unsubscribe: https://meteo-instruments-weekly.example/unsubscribe",
+  "attachments": [],
+  "expected": {
+    "door": "ignore",
+    "reason": "Newsletter and advertising, no request to Kestrel"
+  }
+}

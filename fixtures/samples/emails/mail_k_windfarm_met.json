@@ -1,0 +1,19 @@
+{
+  "id": "mail_k_windfarm_met",
+  "workspace_id": "ws_kestrel_sensing",
+  "to": "sales@kestrel-sensing.example",
+  "from": {
+    "name": "Katharina Vogel",
+    "address": "k.vogel@nordwind-energie.example"
+  },
+  "subject": "Anfrage / Enquiry: visibility and cloud-base on two met masts, Lüneburger Heide repower",
+  "date": "2026-10-28T13:41:00Z",
+  "body_text": "Dear Kestrel team,\n\nNordwind Energie GmbH (Hamburg, VAT DE811234567) is repowering the Lüneburger Heide wind farm and wants to add low-visibility and cloud-base measurements to two new 100 m met masts, to support icing and shutdown forecasting.\n\nWhat we need per mast:\n- One visibility sensor, range 10 m to at least 50 km, SDI-12 or Modbus RTU output.\n- One cloud-base ceilometer, range to 7 km or more, three layers, Modbus RTU or RS-232.\n- A data logger that polls both over Modbus and SDI-12, 12 channels or more, 1-minute averages, at least 90 days local storage, sub-1 W draw (battery plus solar mast supply).\n- Operating temperature down to -30 °C, IP65 or better.\n- Cellular backhaul to our SCADA over MQTT with TLS.\n- A cloud data service so our forecasting team can pull the data by API; 5 years retention.\n\nPlease quote for two complete sets plus remote commissioning support, in EUR. Lead time under 10 weeks if possible.\n\nMit freundlichen Grüßen,\nKatharina Vogel\nHead of Met Systems, Nordwind Energie GmbH",
+  "attachments": [],
+  "expected": {
+    "door": "design",
+    "reason": "Engineering spec for met-mast instruments with a quote request; EU B2B buyer with VAT id",
+    "buyer_country": "DE",
+    "buyer_b2b": true
+  }
+}

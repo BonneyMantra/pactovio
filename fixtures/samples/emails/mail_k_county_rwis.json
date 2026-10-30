@@ -1,0 +1,19 @@
+{
+  "id": "mail_k_county_rwis",
+  "workspace_id": "ws_kestrel_sensing",
+  "to": "sales@kestrel-sensing.example",
+  "from": {
+    "name": "Deirdre Hanlon",
+    "address": "dhanlon@kilbrook-cc.example"
+  },
+  "subject": "Road weather station refresh, 12 sites: heated sensors, quote please",
+  "date": "2026-10-29T08:02:00Z",
+  "body_text": "Hi,\n\nKilbrook County Council is refreshing its winter-maintenance road weather information system. Twelve existing stations on exposed mountain-pass routes need new sensors and a new communications unit.\n\nPer site:\n- A heated visibility sensor, 10 m to 20 km or better, SDI-12 output preferred (our existing logger is SDI-12 only).\n- A present-weather sensor that distinguishes rain, snow, freezing rain and fog.\n- Operation down to -30 °C, IP66, mast mounted (3 m).\n- A 4G unit with SIM failover, reporting every minute to our central server over MQTT.\n- Mains is not available on seven of the twelve sites, so solar power under 15 W total.\n\nWe also need on-site installation for all twelve sites (about 1 day each) and a five-year data service. Pricing in EUR ex VAT with your best volume discount, please. Funding closes in December so we need the quote within two weeks.\n\nRegards,\nDeirdre Hanlon\nRoads and Transportation, Kilbrook County Council, Ireland",
+  "attachments": [],
+  "expected": {
+    "door": "design",
+    "reason": "County council asking for product design and priced quote for multi-site refresh",
+    "buyer_country": "IE",
+    "buyer_b2b": true
+  }
+}
