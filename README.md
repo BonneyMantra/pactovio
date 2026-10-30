@@ -6,9 +6,19 @@ The pre-sales engine for technical B2B suppliers. Three doors in, one engine, ou
 - Engine: read the whole pack, extract every requirement, decide bid or no-bid per lot, match requirements to the company's evidence, draft answers and a priced quote, check every claim, ask a person to approve.
 - Outputs: the buyer's own response form filled in (DOCX), a requirement matrix with sources, per-lot verdicts, a priced quote (DOCX and XLSX), events to the team's tools, and a 24x7 agent you can chat with or reach over MCP.
 
-Built for the Nebius x NVIDIA hackathon, track Best Apps and Agents. Live: https://pactovio.pages.dev (test-mode billing, fictional sample companies).
+Built for the Nebius x NVIDIA hackathon, track Best Apps and Agents. Live: https://pactovio.pages.dev (landing, /pricing) and https://pactovio.pages.dev/app (the product; no sign-in, every visitor gets a capped judge session). Billing is Dodo Payments test mode. The app opens on a demo workspace for an electronics manufacturer built only from its public website and records; two fictional sample companies (Harbour Digital, Kestrel Sensing) are one switch away.
 
-**What is and is not in this repo.** The API, engine, agent, MCP server, audit job and self-host desk agent are here and deployed. The product interface is built separately in `apps/web` and served as its own Worker in front of the API. `https://pactovio.pages.dev/` serves a plain landing page, `/privacy` and `/terms` until that Worker is bound, and the full API is reachable under `/api`, `/v1`, `/mcp`. This README makes no claims about screens.
+**The product interface** (`apps/front/public`, plain HTML, CSS and ES modules on the live API, no build step):
+
+| Screen | What it shows (all live data) |
+|---|---|
+| Today | Counts that open filtered views, top tender matches with fit, newest intakes with the Lightning model's one-line reason, approvals waiting, recent runs with tokens and cost |
+| Inbox | Every intake by door (RFQ, RFP, design request, tender, ignored) with confidence; paste-in composer |
+| Tenders → detail | Per-lot verdict with reasons citing document and page, every gate, the requirement matrix (filters, search, page citations), drafted answers with struck claims and a NeMo Guardrails panel, the buyer's own form filled and downloadable, the run's steps with model, tokens and cost, buyer intel |
+| Quotes | Design requests matched against datasheets (MET / PARTIAL / GAP with citations) and quote documents with DOCX export |
+| Agent | The 24x7 agent: streaming chat over WebSocket, tool calls, citations, approve / decline cards, proactive inbox |
+| Connections | 15 connectors by category with live status and a live event stream |
+| Evidence, Billing & usage, How it works, Pricing, Help | Evidence library; plans, checkout and session caps; in-app explanations |
 
 ## How it works
 
@@ -31,7 +41,7 @@ Built for the Nebius x NVIDIA hackathon, track Best Apps and Agents. Live: https
 | Piece | What it does |
 |---|---|
 | `apps/api` | One Worker `pactovio-api`. Routes, Workflows (`PackRunWorkflow`, `ScanWorkflow`, `IntakeWorkflow`), `AgentHub` Durable Object (SQLite, WebSocket hibernation, alarms), queue consumer, cron `0 22 * * *` UTC. `workers_dev` is off. |
-| `apps/front` | Cloudflare Pages project `pactovio`: `_worker.js` sends `/api /v1 /mcp /webhooks /ics /dev` to the Worker over a service binding and everything else to the UI Worker if bound, else the static landing pages. |
+| `apps/front` | Cloudflare Pages project `pactovio`: `_worker.js` sends `/api /v1 /mcp /webhooks /ics /dev` to the Worker over a service binding and everything else to the static site: landing, `/pricing`, `/privacy`, `/terms` and the product app at `/app`. |
 | `packages/engine` | Pack run pipeline, gates in code, evidence matching, verdicts, drafting, claim check, form fill, buyer intel, caps, replay. |
 | `packages/sources`, `packages/pack` | TED v3, UK Find a Tender, eTenders (anonymous pack download), unzip and text extraction for PDF, DOCX, XLSX; form detection. |
 | `packages/quote` | Design request parsing, catalogue match, pricing and tax rules, quote export. |
@@ -96,6 +106,8 @@ The cost is dominated by Ultra reading the pack once per section group with a ca
 | Google Calendar | create event, read back, delete | PASS |
 | Jira | create task, read back, delete | PASS |
 | Asana | create task, read back, delete | PASS |
+
+Event rules also fired on their own in production on 30 Oct, with no one clicking: a finished pack read opened gap tasks in Jira and Asana (`run.completed` → `create_gap_tasks`); a drafted quote was uploaded to Google Drive and Dropbox (`quote.ready` → `upload_artifacts`) and the agent posted "Quote ready" plus both lot verdicts to the team's Slack channel. A no-bid verdict correctly pushed nothing to the CRM (`sync_bid` only runs for Bid or Bid with conditions).
 
 Built and fixture-tested but **not live-tested**: HubSpot (test account not finished in time), Outlook and Outlook Calendar (Microsoft account creation was refused for the test persona), Microsoft Teams (needs a Microsoft 365 work account), QuickBooks (Intuit sandbox signup was refused), DocuSign and Xero (need our own OAuth apps). Pactovio uses its own Composio project, so its webhook subscription and connected accounts are isolated from any other product.
 
