@@ -130,6 +130,17 @@ describe('api keys end to end', () => {
     expect(revoked.status).toBe(200);
     expect((await call('/v1/tenders', { headers: { authorization: `Bearer ${k.key}` } })).status).toBe(401);
   });
+  it('a demo browser session cannot mint keys in production', async () => {
+    const cookie = (await call('/api/today')).headers.get('set-cookie')!.split(';')[0]!;
+    const prev = env.ENVIRONMENT;
+    env.ENVIRONMENT = 'production';
+    try {
+      const res = await call('/api/api-keys', { method: 'POST', headers: { 'content-type': 'application/json', cookie }, body: '{"name":"judge"}' });
+      expect(res.status).toBe(403);
+    } finally {
+      env.ENVIRONMENT = prev;
+    }
+  });
 });
 
 describe('answers', () => {
