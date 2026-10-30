@@ -18,6 +18,7 @@ export interface EtendersOptions {
 }
 
 const UA = 'Mozilla/5.0 (compatible; Pactovio/0.1; tender pack reader)';
+const REQUEST_TIMEOUT_MS = 25_000;
 const DEFAULT_MAX_FILES = 25;
 const DEFAULT_MAX_BYTES = 30 * 1024 * 1024;
 
@@ -76,7 +77,7 @@ export async function fetchEtendersPack(resourceId: string, opts: EtendersOption
   const base = `https://${opts.host ?? 'www.etenders.gov.ie'}/epps/cft`;
   const jar = new Jar();
   const get = async (url: string, referer?: string): Promise<Response> => {
-    const res = await f(url, { headers: { 'user-agent': UA, ...(jar.header() ? { cookie: jar.header() } : {}), ...(referer ? { referer } : {}) } });
+    const res = await f(url, { signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS), headers: { 'user-agent': UA, ...(jar.header() ? { cookie: jar.header() } : {}), ...(referer ? { referer } : {}) } });
     jar.absorb(res);
     return res;
   };
