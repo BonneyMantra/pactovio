@@ -1,0 +1,23 @@
+{
+  "name": "pactovio",
+  "private": true,
+  "version": "0.1.0",
+  "license": "MIT",
+  "type": "module",
+  "workspaces": ["apps/api", "apps/front", "packages/*"],
+  "scripts": {
+    "dev:api": "npm run dev --workspace @pactovio/api",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit --pretty false",
+    "db:migrate:local": "npm run db:migrate:local --workspace @pactovio/api",
+    "seed:local": "npm run seed:local --workspace @pactovio/api"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260101.0",
+    "@types/node": "^24.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.9.0",
+    "vitest": "^3.2.0",
+    "wrangler": "^4.156.0"
+  }
+}
