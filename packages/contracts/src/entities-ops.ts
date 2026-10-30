@@ -112,15 +112,36 @@ export const Connector = z.object({
 });
 export type Connector = z.infer<typeof Connector>;
 
+/** One event-to-action rule. `filter` keys are matched against the event payload (value or list of values). */
+export const ConnectorRule = z.object({
+  event: EventType,
+  action: z.string(),
+  enabled: z.boolean(),
+  filter: Json.optional(),
+});
+export type ConnectorRule = z.infer<typeof ConnectorRule>;
+
 export const ConnectorCatalogItem = z.object({
   provider: z.string(),
   name: z.string(),
-  category: z.enum(['email', 'chat', 'calendar', 'storage', 'crm', 'tasks']),
+  category: z.enum(['email', 'chat', 'calendar', 'storage', 'crm', 'tasks', 'signing', 'accounting']),
   description: z.string(),
   status: ConnectorStatus,
   connected_at: Iso.nullable(),
   external_account_id: z.string().nullable(),
   actions: z.array(z.string()),
+  /** What Pactovio does with this connector, in one sentence. */
+  what_it_does: z.string().optional(),
+  /** Composio toolkit slug behind this provider. */
+  toolkit: z.string().optional(),
+  /** false = needs our own OAuth app registered in Composio first. */
+  managed_auth: z.boolean().optional(),
+  /** Why the provider cannot be connected right now (work account, own OAuth app), else null. */
+  setup_note: z.string().nullable().optional(),
+  /** "Connected as ..." label read from the provider, when known. */
+  account_label: z.string().nullable().optional(),
+  /** Effective event rules: defaults merged with the workspace's overrides. */
+  rules: z.array(ConnectorRule).optional(),
 });
 export type ConnectorCatalogItem = z.infer<typeof ConnectorCatalogItem>;
 

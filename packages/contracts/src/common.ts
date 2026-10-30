@@ -23,7 +23,8 @@ export const RunStatus = z.enum(['queued', 'running', 'completed', 'failed']);
 export const StepStatus = z.enum(['running', 'ok', 'error']);
 export const AnswerStatus = z.enum(['draft', 'approved']);
 export const AuditStatus = z.enum(['queued', 'running', 'completed', 'failed']);
-export const ConnectorStatus = z.enum(['available', 'pending', 'connected', 'error']);
+/** `needs_work_account` is computed in the catalogue only (never stored; the connectors table CHECK has the other four). */
+export const ConnectorStatus = z.enum(['available', 'pending', 'connected', 'error', 'needs_work_account']);
 export const QuoteStatus = z.enum(['draft', 'ready', 'sent', 'accepted', 'expired']);
 export const DesignStatus = z.enum(['new', 'matched', 'quoted', 'closed']);
 export const PlanId = z.enum(['free', 'pro', 'max']);

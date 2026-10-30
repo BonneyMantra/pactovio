@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { Iso, Json, PlanId } from './common';
 import { Workspace } from './entities-company';
+import { ConnectorRule } from './entities-ops';
 import {
   Document, Intake, Requirement, Run, RunStep, Tender, TenderMatch, Verdict,
 } from './entities-tender';
@@ -97,6 +98,8 @@ export const ExportQuoteQuery = z.object({ format: z.enum(['docx', 'xlsx']).defa
 
 export const ConnectBody = z.object({ redirect_to: z.string().optional() });
 export const ConnectResult = z.object({ redirect_url: z.string() });
+export const ConnectorRulesBody = z.object({ rules: z.array(ConnectorRule) });
+export const ConnectorRulesResult = z.object({ rules: z.array(ConnectorRule) });
 export const TestActionBody = z.object({ action: z.string(), input: Json.optional() });
 export const TestActionResult = z.object({ ok: z.boolean(), output: z.unknown().optional() });
 
