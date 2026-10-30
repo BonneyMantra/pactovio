@@ -1,8 +1,19 @@
 import { newId, type CompanyProfile, type Evidence } from '@pactovio/contracts';
 import type { Env } from '@pactovio/contracts/env';
-import { embed, rankByCosine, type StepLogger } from '@pactovio/models';
+import { embed, modelFor, rankByCosine, type StepLogger } from '@pactovio/models';
 import { EMBED_DIMS } from './types';
-import { eurFromMinor } from './util';
+import { eurFromMinor, mapLimit } from './util';
+
+/** Embedding batches of 32 run 4 at a time; the whole call is logged as ONE run_step. */
+export async function embedParallel(texts: string[], o: { env: Env; purpose: string; onStep?: StepLogger; fetch?: typeof fetch }): Promise<number[][]> {
+  const batches: string[][] = [];
+  for (let i = 0; i < texts.length; i += 32) batches.push(texts.slice(i, i + 32));
+  const agg = { tokensIn: 0, cost: 0 };
+  const t0 = Date.now();
+  const out = await mapLimit(batches, 4, (b) => embed(b, { env: o.env, role: 'embed', purpose: o.purpose, fetch: o.fetch, onStep: (s) => { agg.tokensIn += s.tokensIn; agg.cost += s.costUsd; } }));
+  await o.onStep?.({ purpose: o.purpose, model: modelFor(o.env, 'embed'), status: 'ok', tokensIn: agg.tokensIn, tokensOut: 0, tokensCached: 0, ms: Date.now() - t0, costUsd: Number(agg.cost.toFixed(6)), summary: `${texts.length} texts in ${batches.length} parallel batch(es)` });
+  return out.flat();
+}
 
 export interface ChunkRef { id: string; evidenceId: string; text: string; embedding: number[]; title: string; validTo: string | null; kind: string }
 
@@ -64,7 +75,7 @@ export async function ensureEmbeddings(env: Env, workspaceId: string, o: { onSte
   const missing = (await env.DB.prepare('SELECT c.id, e.title || char(10) || c.text AS text FROM evidence_chunks c JOIN evidence e ON e.id = c.evidence_id WHERE c.workspace_id = ? AND c.embedding_json IS NULL').bind(workspaceId).all<{ id: string; text: string }>()).results;
   const total = (await env.DB.prepare('SELECT COUNT(*) AS n FROM evidence_chunks WHERE workspace_id = ?').bind(workspaceId).first<{ n: number }>())?.n ?? 0;
   if (!missing.length) return { chunks: total, embedded: 0 };
-  const vecs = await embed(missing.map((m) => m.text), { env, role: 'embed', purpose: `Embed ${missing.length} evidence chunks (cached in D1)`, onStep: o.onStep, fetch: o.fetch });
+  const vecs = await embedParallel(missing.map((m) => m.text), { env, purpose: `Embed ${missing.length} evidence chunks (cached in D1)`, onStep: o.onStep, fetch: o.fetch });
   const up = missing.map((m, i) => env.DB.prepare('UPDATE evidence_chunks SET embedding_json = ? WHERE id = ?').bind(JSON.stringify(round(vecs[i]!)), m.id));
   for (let i = 0; i < up.length; i += 50) await env.DB.batch(up.slice(i, i + 50));
   return { chunks: total, embedded: missing.length };
@@ -83,7 +94,7 @@ export interface Ranked { chunk: ChunkRef; score: number }
 /** Embed the queries (one batched call) and rank chunks by cosine in code. There is no reranker. */
 export async function rankQueries(queries: string[], chunks: ChunkRef[], o: { env: Env; purpose: string; topK?: number; onStep?: StepLogger; fetch?: typeof fetch }): Promise<Ranked[][]> {
   if (!queries.length || !chunks.length) return queries.map(() => []);
-  const qv = await embed(queries, { env: o.env, role: 'embed', purpose: o.purpose, onStep: o.onStep, fetch: o.fetch });
+  const qv = await embedParallel(queries, { env: o.env, purpose: o.purpose, onStep: o.onStep, fetch: o.fetch });
   const items = chunks.map((c) => ({ item: c, embedding: c.embedding }));
   return qv.map((v) => rankByCosine(round(v), items, o.topK ?? 4).map((r) => ({ chunk: r.item, score: r.score })));
 }
