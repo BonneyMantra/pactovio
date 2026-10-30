@@ -4,7 +4,7 @@
 .l-nav.scrolled { box-shadow: 0 0.5px 0 var(--line); }
 .l-nav .in { display: flex; align-items: center; height: 62px; gap: 28px; }
 .l-logo { display: inline-flex; align-items: center; gap: 8px; font-size: 17px; font-weight: 610; letter-spacing: -0.03em; }
-.l-logo .mark { width: 22px; height: 22px; border-radius: 6px; background: var(--ink); color: #fff; display: grid; place-items: center; }
+.l-logo .mark { width: 24px; height: 24px; display: block; flex: none; }
 .l-links { display: flex; gap: 26px; margin-left: auto; font-size: 14px; font-weight: 510; }
 .l-links a { color: var(--ink); opacity: 0.92; transition: opacity 150ms; }
 .l-links a:hover { opacity: 0.6; }
@@ -142,7 +142,7 @@
 
 .l-foot { margin: 96px 16px 16px; background: #fff; border-radius: var(--r-win); box-shadow: var(--shadow-card); }
 .l-foot .in { display: grid; grid-template-columns: 1.4fr repeat(3, minmax(0, 1fr)); gap: 24px; padding: 56px 0 64px; }
-.l-foot .tile-o { width: 76px; height: 76px; border-radius: 12px; background: linear-gradient(180deg, #ff6a1a, #e8540a); color: #fff; display: grid; place-items: center; box-shadow: 0 10px 24px rgba(242, 96, 12, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.25); }
+.l-foot .tile-o { width: 76px; height: 76px; border-radius: 18px; display: block; box-shadow: 0 10px 24px rgba(242, 96, 12, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.25); }
 .l-foot .who { display: flex; gap: 22px; }
 .l-foot .who div { font-size: 14px; line-height: 24px; color: var(--ink-2); }
 .l-foot .who b { color: var(--ink); font-weight: 510; }

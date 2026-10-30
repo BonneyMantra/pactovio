@@ -27,7 +27,7 @@ function renderSide(active) {
   const side = document.getElementById('side');
   const ws = ctx.session?.workspace;
   side.replaceChildren(
-    h('a.brand', { href: '/' }, h('span', { style: { width: '22px', height: '22px', borderRadius: '6px', background: 'var(--ink)', color: '#fff', display: 'grid', placeItems: 'center' } }, icon('logo', 14)), 'Pactovio'),
+    h('a.brand', { href: '/' }, h('img', { src: '/assets/brand/mark.svg', alt: '', width: 24, height: 24, style: { display: 'block' } }), 'Pactovio'),
     ...NAV.map((n) => n.group
       ? h('div.group', n.group)
       : h(`a.nav-item${active === n.id ? '.on' : ''}`, { href: `#/${n.id}` }, icon(n.icon), n.label, ctx.counts[n.id] ? h('span.count', String(ctx.counts[n.id])) : null)),
