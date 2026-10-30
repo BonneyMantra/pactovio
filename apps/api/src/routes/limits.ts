@@ -5,8 +5,8 @@ import { one, rows } from '../lib/db';
 import type { Register } from '../lib/router';
 
 interface Usage { model: string; calls: number; tokens_in: number; tokens_out: number; tokens_cached: number; cost_usd: number }
-const SELECT = `SELECT model, COUNT(*) AS calls, COALESCE(SUM(tokens_in),0) AS tokens_in, COALESCE(SUM(tokens_out),0) AS tokens_out,
-  COALESCE(SUM(tokens_cached),0) AS tokens_cached, COALESCE(SUM(cost_usd),0) AS cost_usd FROM run_steps s JOIN runs r ON r.id = s.run_id
+const SELECT = `SELECT s.model AS model, COUNT(*) AS calls, COALESCE(SUM(s.tokens_in),0) AS tokens_in, COALESCE(SUM(s.tokens_out),0) AS tokens_out,
+  COALESCE(SUM(s.tokens_cached),0) AS tokens_cached, COALESCE(SUM(s.cost_usd),0) AS cost_usd FROM run_steps s JOIN runs r ON r.id = s.run_id
   WHERE s.model IS NOT NULL AND r.replay = 0`;
 const sum = (u: Usage[]) => Number(u.reduce((a, x) => a + x.cost_usd, 0).toFixed(6));
 
@@ -16,8 +16,8 @@ export const register: Register = (r) => {
     const day = new Date().toISOString().slice(0, 10);
     const s = auth.sessionId ? await one<{ runs_used: number; tavily_used: number }>(db, 'SELECT runs_used, tavily_used FROM judge_sessions WHERE id = ?', auth.sessionId) : null;
     const [today, all, audits, scan] = await Promise.all([
-      rows<Usage>(db, `${SELECT} AND s.at >= ? GROUP BY model ORDER BY cost_usd DESC`, `${day}T00:00:00.000Z`),
-      rows<Usage>(db, `${SELECT} GROUP BY model ORDER BY cost_usd DESC`),
+      rows<Usage>(db, `${SELECT} AND s.at >= ? GROUP BY s.model ORDER BY SUM(s.cost_usd) DESC`, `${day}T00:00:00.000Z`),
+      rows<Usage>(db, `${SELECT} GROUP BY s.model ORDER BY SUM(s.cost_usd) DESC`),
       rows<{ id: string; job_id: string | null; status: string; subject_type: string; created_at: string; completed_at: string | null }>(db, 'SELECT id, job_id, status, subject_type, created_at, completed_at FROM audits WHERE workspace_id = ? ORDER BY created_at DESC LIMIT 5', auth.workspaceId),
       one<{ id: string; status: string; started_at: string; finished_at: string | null }>(db, "SELECT id, status, started_at, finished_at FROM runs WHERE kind = 'scan' ORDER BY started_at DESC LIMIT 1"),
     ]);

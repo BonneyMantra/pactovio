@@ -7,6 +7,8 @@ export const register: Register = (r) => {
     items: await rows<ApiKey>(db, 'SELECT id, workspace_id, prefix, name, created_at, last_used_at FROM api_keys WHERE workspace_id = ? ORDER BY created_at DESC', workspaceId),
   }));
   r.on(endpoints.createApiKey, async ({ db, workspaceId, body }) => {
+    const n = await one<{ n: number }>(db, 'SELECT COUNT(*) AS n FROM api_keys WHERE workspace_id = ?', workspaceId);
+    if ((n?.n ?? 0) >= 10) throw new HttpError(409, 'Limit of 10 API keys per workspace; revoke one first', 'conflict');
     const key = `pk_${randomToken(20)}`;
     const id = newId('apiKey');
     const prefix = key.slice(0, 11);
