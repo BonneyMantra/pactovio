@@ -1,0 +1,33 @@
+# NeMo Guardrails 0.24.1 configuration for the Pactovio proposal audit.
+# [NeMo] everything in this file is stock NeMo configuration; [OURS] marks what we wrote.
+models:
+  - type: main
+    engine: openai                      # OpenAI-compatible: Nebius Token Factory
+    model: nvidia/Nemotron-3.5-Super-VL # [NeMo self check facts] judge model
+    parameters:
+      base_url: https://api.tokenfactory.nebius.com/v1/
+      # api key is read from OPENAI_API_KEY, which audit.py sets from NEBIUS_API_KEY
+      temperature: 0.0
+      max_tokens: 400
+      extra_body:
+        chat_template_kwargs:
+          enable_thinking: false
+
+rails:
+  config:
+    regex_detection:
+      output:
+        case_insensitive: true
+        # [NeMo regex rail] [OURS patterns] flags the claim types a bid answer must be able to prove.
+        # The named group is the claim type; claims.py reads it back.
+        patterns:
+          - '(?P<certification>\b(?:ISO[\s/-]?\d{4,5}(?::\d{4})?|SOC[\s-]?2|Cyber Essentials(?: Plus)?|PCI[\s-]?DSS|CE[\s-]marked?|RoHS|GDPR[\s-]certified|IEC[\s-]?\d{4,6})\b)'
+          - '(?P<sla>\b(?:\d{2,3}(?:\.\d+)?\s?%\s?(?:uptime|availability|SLA)|(?:respon[a-z]+|resolution|fix)\s+(?:time\s+)?(?:within|in|of)\s+\d+\s?(?:minutes?|hours?|days?)|\d+\s?(?:minutes?|hours?)\s+(?:response|resolution)|24\s?[x/]\s?7|SLA)\b)'
+          - '(?P<headcount>\b\d{1,5}\s+(?:full[\s-]time\s+)?(?:staff|employees|engineers|developers|consultants|people|FTEs?|specialists|technicians)\b)'
+          - '(?P<client>\b(?:for|with)\s+(?:the\s+)?(?:[A-Z][A-Za-z&]+\s+){0,3}(?:Council|Department|Authority|Agency|University|Bank|Hospital|Teagasc|HSE|Office|Commission|Ministry|Board)\b)'
+          - '(?P<money>(?:(?:[€$£]|\b(?:EUR|USD|GBP)\s?)\s?\d[\d,.]*\s?(?:k|m|bn|million|billion)?\b|\b\d[\d,.]*\s?(?:EUR|USD|GBP|euros?)\b))'
+  output:
+    flows:
+      - regex check output   # [NeMo] library rail
+      - claim audit          # [OURS] custom flow + action in rails.co / ours_actions.py
+      - self check facts     # [NeMo] library rail, judge = Nemotron 3.5 Super VL

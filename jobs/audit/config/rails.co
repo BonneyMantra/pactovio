@@ -1,0 +1,10 @@
+# [OURS] Colang 1.0 flow that wires our custom action into NeMo's output rails.
+define bot refuse to respond
+  "I'm sorry, I can't respond to that."
+
+define subflow claim audit
+  """Check every flagged claim in the answer against that answer's evidence (our claim_audit action)."""
+  $claim_ok = execute claim_audit
+  if not $claim_ok
+    bot refuse to respond
+    stop
