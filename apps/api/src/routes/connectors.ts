@@ -1,33 +1,68 @@
-import { endpoints, type ConnectorCatalogItem } from '@pactovio/contracts';
-import { rows } from '../lib/db';
-import type { Register } from '../lib/router';
+import { z } from 'zod';
+import { endpoints, HttpError } from '@pactovio/contracts';
+import {
+  buildCatalog, connectUrl, completeCallback, disconnectProvider, EVENT_ACTIONS, getConnector, PROVIDER_ACTIONS, providerSpec, runAction,
+  saveConnector, syncConnectors,
+} from '@pactovio/connectors';
+import type { Handler, Register } from '../lib/router';
 
-type Seed = Omit<ConnectorCatalogItem, 'status' | 'connected_at' | 'external_account_id'>;
+/** Judge sessions are anonymous and share one set of connected test accounts: they may try a connector but not replace or remove a live one. */
+const requireOwner = (via: string, env: { ENVIRONMENT?: string }) => {
+  if (via === 'session' && env.ENVIRONMENT === 'production') throw new HttpError(403, 'This connection is shared by the public demo; use an API key to change it', 'forbidden');
+};
 
-/** Static catalogue; live status is merged in from the `connectors` table. Lane connectors extends actions. */
-export const CATALOG: Seed[] = [
-  { provider: 'gmail', name: 'Gmail', category: 'email', description: 'Watch a shared inbox for inbound RFPs and RFQs.', actions: ['read_inbox', 'send_reply'] },
-  { provider: 'outlook', name: 'Outlook', category: 'email', description: 'Watch a Microsoft 365 mailbox for inbound RFPs and RFQs.', actions: ['read_inbox', 'send_reply'] },
-  { provider: 'slack', name: 'Slack', category: 'chat', description: 'Post bid/no-bid verdicts and approval requests to a channel.', actions: ['post_message'] },
-  { provider: 'googlecalendar', name: 'Google Calendar', category: 'calendar', description: 'Put tender deadlines on the bid team calendar.', actions: ['create_event'] },
-  { provider: 'googledrive', name: 'Google Drive', category: 'storage', description: 'Save filled forms and proposals to a folder.', actions: ['upload_file'] },
-  { provider: 'hubspot', name: 'HubSpot', category: 'crm', description: 'Create deals for qualified RFPs and quotes.', actions: ['create_deal'] },
-  { provider: 'notion', name: 'Notion', category: 'tasks', description: 'Create a bid-room page with the requirement matrix.', actions: ['create_page'] },
-];
+const TEST_CAP_PER_HOUR = 20;
+
+const known = (id: string) => {
+  if (!providerSpec(id)) throw new HttpError(404, `Unknown connector ${id}`, 'not_found');
+  return id;
+};
 
 export const register: Register = (r) => {
-  r.on(endpoints.listConnectors, async ({ db, workspaceId }) => {
-    const live = await rows<{ provider: string; status: ConnectorCatalogItem['status']; external_account_id: string | null; connected_at: string | null }>(
-      db, 'SELECT provider, status, external_account_id, connected_at FROM connectors WHERE workspace_id = ?', workspaceId,
-    );
-    return {
-      items: CATALOG.map((c) => {
-        const l = live.find((x) => x.provider === c.provider);
-        return { ...c, status: l?.status ?? 'available', connected_at: l?.connected_at ?? null, external_account_id: l?.external_account_id ?? null };
-      }),
-    };
+  r.on(endpoints.listConnectors, async ({ env, workspaceId }) => {
+    await syncConnectors(env, workspaceId);
+    return { items: await buildCatalog(env, workspaceId) };
   });
-  r.stub(endpoints.connectConnector, 'connectors.connectUrl');
-  r.stub(endpoints.disconnectConnector, 'connectors disconnect');
-  r.stub(endpoints.testConnector, 'connectors.runAction');
+
+  const connect: Handler<typeof endpoints.connectConnector> = async ({ c, env, auth, workspaceId, params, body }) => {
+    const provider = known(params.id);
+    const cur = await getConnector(env, workspaceId, provider);
+    if (cur?.status === 'connected' && !cur.meta.sample) requireOwner(auth.via, env);
+    const redirect_url = await connectUrl(env, workspaceId, provider, { origin: new URL(c.req.url).origin, redirectTo: body.redirect_to });
+    return { redirect_url };
+  };
+  r.on(endpoints.connectConnector, connect);
+
+  r.on(endpoints.disconnectConnector, async ({ env, auth, workspaceId, params }) => {
+    requireOwner(auth.via, env);
+    await disconnectProvider(env, workspaceId, known(params.id));
+    return { ok: true };
+  });
+
+  r.on(endpoints.testConnector, async ({ env, auth, workspaceId, params, body }) => {
+    const provider = known(params.id);
+    if (!PROVIDER_ACTIONS[provider]?.[body.action]) throw new HttpError(400, `${provider} has no action "${body.action}". Available: ${Object.keys(PROVIDER_ACTIONS[provider] ?? {}).join(', ')}`, 'validation');
+    const key = `cx:test:${auth.sessionId ?? workspaceId}:${new Date().toISOString().slice(0, 13)}`;
+    const used = Number((await env.CACHE.get(key)) ?? 0);
+    if (used >= TEST_CAP_PER_HOUR) throw new HttpError(429, `Test actions are capped at ${TEST_CAP_PER_HOUR} per hour`, 'rate_limited');
+    await env.CACHE.put(key, String(used + 1), { expirationTtl: 3700 });
+    return runAction(env, workspaceId, provider, body.action, (body.input ?? {}) as Record<string, unknown>);
+  });
+
+  r.on(endpoints.setConnectorRules, async ({ env, auth, workspaceId, params, body }) => {
+    const provider = known(params.id);
+    requireOwner(auth.via, env);
+    const bad = body.rules.find((x) => !EVENT_ACTIONS[x.action]);
+    if (bad) throw new HttpError(400, `Unknown rule action "${bad.action}". Available: ${Object.keys(EVENT_ACTIONS).join(', ')}`, 'validation');
+    const cur = await getConnector(env, workspaceId, provider);
+    await saveConnector(env, workspaceId, provider, { meta: { ...(cur?.meta ?? {}), rules: body.rules } });
+    return { rules: body.rules };
+  });
+
+  // Composio sends the browser back here after OAuth (not part of the typed contract: a redirect, not JSON).
+  r.app.get('/connectors/callback', async (c) => {
+    const q = z.object({ w: z.string().optional(), p: z.string().optional(), status: z.string().optional(), connected_account_id: z.string().optional() }).parse(c.req.query());
+    const res = await completeCallback(c.env, q);
+    return c.redirect(res.redirect, 302);
+  });
 };

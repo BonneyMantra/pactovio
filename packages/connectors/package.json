@@ -5,6 +5,21 @@
   "type": "module",
   "main": "src/index.ts",
   "types": "src/index.ts",
-  "exports": { ".": "./src/index.ts" },
-  "dependencies": { "@pactovio/contracts": "*", "@pactovio/models": "*", "zod": "^4.1.0" }
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@pactovio/contracts": "*",
+    "@pactovio/engine": "*",
+    "@pactovio/events": "*",
+    "@pactovio/models": "*",
+    "@pactovio/quote": "*",
+    "zod": "^4.1.0"
+  },
+  "scripts": {
+    "snapshot:schemas": "tsx scripts/snapshot-tool-schemas.ts"
+  },
+  "devDependencies": {
+    "ajv": "^8.20.0"
+  }
 }
