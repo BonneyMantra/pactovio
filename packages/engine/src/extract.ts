@@ -1,6 +1,8 @@
 import type { Env } from '@pactovio/contracts/env';
 import { chatJSON, type StepLogger } from '@pactovio/models';
-import { LotRequirements, Overview, type ExtractedReq } from './schemas';
+import { readPages } from './lot-pages';
+import { LotSections, Overview, type ExtractedReq } from './schemas';
+import { mapLimit } from './util';
 
 export const SYSTEM = `You are the bid analyst inside Pactovio. You read a complete public tender pack and return exact structured data.
 Rules: use only what the pack says; keep reference numbers exactly as printed; page numbers come from the [page N] markers; document names must be the exact filename after "=== DOCUMENT:". Clarifications issued after the original documents OVERRIDE conflicting original text: when a clarification changes a value or requirement, use the clarified value and say so in the note. Never invent requirements. Output JSON only.`;
@@ -29,39 +31,35 @@ export async function extractOverview(c: Common) {
   });
 }
 
-const PAGE = 60;
-const MAX_PAGES = 6;
-
-/**
- * Requirements of one lot, in pages of up to 60 in document order. One long answer used to hit the output limit and
- * come back truncated; each page restarts after the last reference returned, with the pack prefix cached.
- */
-export async function extractLot(c: Common, lot: { lot_no: string; title: string; response_form_doc: string | null }): Promise<{ requirements: ExtractedReq[] }> {
-  const form = lot.response_form_doc ? `Its response form is "${lot.response_form_doc}".` : '';
-  const base = `Extract the requirements for LOT ${lot.lot_no} (${lot.title}). ${form}
-Sources: the Requirements and Specifications document, the lot's response form tables (Ref No., Requirements, Mandatory/Desirable, compliance, comments), and the award criteria in the call for tender.
-- kind: "mandatory" = must / M / pass-fail; "scored" = weighted award criterion or desirable (D) item that earns marks, or a written method statement that is scored; "info" = headings, form-completion instructions and background that need no response.
+const LOT_RULES = `- kind: "mandatory" = must / M / pass-fail; "scored" = weighted award criterion or desirable (D) item that earns marks, or a written method statement that is scored; "info" = headings, form-completion instructions and background that need no response.
 - weight: percentage of the award marks the criterion carries when stated, else null.
 - needs_response: true ONLY when the tenderer writes a narrative answer in a free-text box. False for price and cost tables, rate cards, yes/no confirmations, CV and staff tables.
 - word_limit: only when stated for that item.
-- text: the requirement as written, shortened to at most 60 words when longer (keep the reference exact).
+- text: the requirement as written, shortened to at most 50 words when longer (keep the reference exact).
 - Skip the pass/fail selection criteria themselves (A1 tenderer summary, A2 financial, A3 tax, A4 insurance, A5 health and safety, A6 technical ability as headings, A7 references), they are handled separately; DO include their numbered sub-requirements (A.6.1 and so on) and everything in Sections B. Skip requirements that belong to other lots.
-- Apply clarifications that change a requirement and cite them in note.
-One entry per reference number, in the order they appear in the response form. Return at most ${PAGE} per answer and set has_more.`;
-  const out: ExtractedReq[] = [];
-  for (let page = 1; page <= MAX_PAGES; page++) {
-    const last = out.at(-1);
-    const task = last ? `${base}
+- Apply clarifications that change a requirement and cite them in note.`;
 
-CONTINUE: you already returned ${out.length} requirements, the last one with ref "${last.ref}". Return the next ${PAGE} that come AFTER it, none of the earlier ones.` : base;
-    const { data } = await chatJSON(LotRequirements, {
-      env: c.env, role: 'reason', purpose: `Whole-pack extraction: Lot ${lot.lot_no} requirements${page > 1 ? ` (page ${page})` : ''}`, schemaName: 'lot_requirements',
-      messages: messages(c.pack, task), maxTokens: 24000, timeoutMs: 900_000, onStep: c.onStep, fetch: c.fetch, extra: NO_THINK,
-    });
-    out.push(...data.requirements);
-    if (!data.has_more || !data.requirements.length) break;
-  }
-  return { requirements: out };
+/**
+ * Requirements of one lot. Stage 1 lists the sections of the lot's response form (small answer). Stage 2 reads each
+ * section on its own, in pages (lot-pages.ts), so no single answer is long enough to hit the output limit and a
+ * section's references stay in order for the continuation.
+ */
+export async function extractLot(c: Common, lot: { lot_no: string; title: string; response_form_doc: string | null }): Promise<{ requirements: ExtractedReq[] }> {
+  const form = lot.response_form_doc ? `Its response form is "${lot.response_form_doc}".` : '';
+  const head = `LOT ${lot.lot_no} (${lot.title}). ${form}\nSources: the Requirements and Specifications document, the lot's response form tables (Ref No., Requirements, Mandatory/Desirable, compliance, comments), and the award criteria in the call for tender.`;
+  const sec = await chatJSON(LotSections, {
+    env: c.env, role: 'reason', purpose: `Whole-pack extraction: Lot ${lot.lot_no} sections`, schemaName: 'lot_sections', maxTokens: 3000, onStep: c.onStep, fetch: c.fetch, extra: NO_THINK,
+    messages: messages(c.pack, `${head}\nList the top-level sections that contain requirements for this lot, in document order: the reference prefix exactly as printed in the Ref column (for example "A.6", "B1", "B2", "B3", "B4") and a short title. One entry per prefix; no sub-sections.`),
+  });
+  const prefixes = sec.data.sections.map((s) => s.prefix).filter(Boolean);
+  const tasks = prefixes.length
+    ? prefixes.map((p) => ({ tag: p, scope: `Only requirements whose reference starts with "${p}".` }))
+    : [{ tag: 'all', scope: 'All requirements of the lot.' }];
+  const parts = await mapLimit(tasks, 3, (t) => readPages({ env: c.env, onStep: c.onStep, fetch: c.fetch }, {
+    lot: `${lot.lot_no} ${t.tag}`, system: SYSTEM, pack: c.pack,
+    base: `Extract the requirements for ${head}\n${t.scope}\n${LOT_RULES}\nOne entry per reference number, in the order they appear, no repeats. Return up to 40 per answer and set has_more true when more remain.`,
+  }));
+  return { requirements: dedupeReqs(parts.flat()) };
 }
 
 /** Resolve the filename the model cited to a document id; unknown names map to null. */

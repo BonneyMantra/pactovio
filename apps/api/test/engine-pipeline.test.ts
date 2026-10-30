@@ -62,6 +62,7 @@ const fakeFetch = (async (url: string | URL | Request, init?: RequestInit) => {
   calls.push({ kind: schema ?? 'text', model: body.model });
   const cached = calls.filter((c) => c.model.includes('Ultra')).length > 1 ? 40_000 : 0;
   if (schema === 'overview') return completion(body.model, JSON.stringify(OVERVIEW));
+  if (schema === 'lot_sections') return completion(body.model, JSON.stringify({ sections: [{ prefix: 'B', title: 'Award criteria' }] }));
   if (schema === 'lot_requirements') return completion(body.model, JSON.stringify({ requirements: /CONTINUE/.test(user) ? [] : LOTS[/LOT (\d)/.exec(user)![1]!], has_more: false }), { prompt_tokens: 50_000, completion_tokens: 2000, prompt_tokens_details: { cached_tokens: cached } });
   if (schema === 'judgements') {
     const items = [...user.matchAll(/\[(\d+)\] REQUIREMENT: ([^\n]*)\nEVIDENCE:\n((?:- [^\n]*\n?)*)/g)];
@@ -169,6 +170,6 @@ describe('pack run pipeline with recorded model responses', () => {
   });
 
   it('prompt-cache discipline: the pack block leads every whole-pack prompt', async () => {
-    expect(calls.filter((c) => c.model.includes('Ultra')).length).toBe(1 + 2 + 2); // overview + 2 lots + 2 verdicts
+    expect(calls.filter((c) => c.model.includes('Ultra')).length).toBe(1 + 2 * 2 + 2); // overview + 2 lots x (sections + requirements) + 2 verdicts
   });
 });

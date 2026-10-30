@@ -1,0 +1,15 @@
+import { readFileSync } from 'node:fs';
+import { PackText } from '@pactovio/contracts';
+import { buildPackBlock } from '../src/pack-load';
+import { extractLot } from '../src/extract';
+const env = { NEBIUS_API_KEY: process.env.NEBIUS_API_KEY } as never;
+const pack = PackText.parse(JSON.parse(readFileSync('../../fixtures/packs/ie-teagasc-695163/packtext.json', 'utf8')));
+const b = buildPackBlock(pack);
+const lot = process.argv[2] ?? '2';
+const onStep = (s: { purpose: string; tokensOut: number; ms: number; tokensCached: number }) => process.stderr.write(`${s.purpose} out=${s.tokensOut} cached=${s.tokensCached} ${s.ms}ms\n`);
+const o = await extractLot({ env, pack: b.text, onStep: onStep as never }, { lot_no: lot, title: `Lot ${lot}`, response_form_doc: `P4941_Web_Applications_TRD_LOT${lot}.docx` });
+const refs = o.requirements.map((r) => r.ref);
+process.stderr.write(`${refs.length} requirements, ${new Set(refs).size} unique; first ${refs.slice(0, 5)}; last ${refs.slice(-5)}\n`);
+const kinds: Record<string, number> = {};
+for (const r of o.requirements) kinds[r.kind] = (kinds[r.kind] ?? 0) + 1;
+process.stderr.write(JSON.stringify(kinds) + ` needs_response=${o.requirements.filter((r) => r.needs_response).length}\n`);

@@ -48,7 +48,7 @@ export const ExtractedReq = z.object({
 });
 export type ExtractedReq = z.infer<typeof ExtractedReq>;
 export const LotRequirements = z.object({
-  requirements: z.array(ExtractedReq).max(60),
+  requirements: z.array(ExtractedReq),
   has_more: z.boolean().describe('True when more requirements of this lot remain after the last one returned'),
 });
 
@@ -68,4 +68,11 @@ export const EvidenceRecord = z.object({
   kind: z.enum(['certificate', 'insurance', 'financial', 'case_study', 'policy', 'cv', 'other']),
   summary: z.string().describe('Two or three plain sentences with every figure printed on the document'),
   transcript: z.string().describe('Key text of the document, verbatim, up to 1500 characters'),
+});
+
+export const LotSections = z.object({
+  sections: z.array(z.object({
+    prefix: z.string().describe('Reference prefix as printed, e.g. "B1" or "A.6"'),
+    title: z.string(),
+  })),
 });
