@@ -2,3 +2,5 @@
 .dev.vars
 .wrangler
 .seed.sql
+
+.dev.vars.*
