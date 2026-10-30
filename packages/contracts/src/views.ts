@@ -143,16 +143,32 @@ export const BillingState = z.object({
   credits_balance: z.number().int(),
   plans: z.array(PlanInfo),
 });
-export const CheckoutBody = z.object({ plan: z.enum(['pro', 'max']) });
+export const CheckoutBody = z.object({ plan: z.enum(['pro', 'max', 'credits']) });
 export const UrlResult = z.object({ url: z.string() });
 
+const TokenUsage = z.object({ model: z.string(), calls: z.number().int(), tokens_in: z.number().int(), tokens_out: z.number().int(), tokens_cached: z.number().int(), cost_usd: z.number() });
 export const Limits = z.object({
   session: z.object({
     runs_used: z.number().int(), runs_cap: z.number().int(),
     tavily_used: z.number().int(), tavily_cap: z.number().int(),
     agent_turns_per_min_cap: z.number().int(),
   }),
-  inference: z.object({ rpm: z.number().int(), tpm: z.number().int(), global_concurrency: z.number().int(), shared_across_products: z.number().int() }),
+  inference: z.object({
+    rpm: z.number().int(), tpm: z.number().int(), global_concurrency: z.number().int(), shared_across_products: z.number().int(),
+    flex_concurrency: z.number().int().optional(),
+  }),
+  usage: z.object({
+    today: z.array(TokenUsage), all_time: z.array(TokenUsage),
+    cost_today_usd: z.number(), cost_all_time_usd: z.number(),
+    prices_are_estimates: z.boolean(),
+  }).optional(),
+  tavily: z.object({
+    session_used: z.number().int(), session_cap: z.number().int(),
+    day_used: z.number().int(), day_cap: z.number().int(),
+    month_used: z.number().int(), month_budget: z.number().int(),
+  }).optional(),
+  audits: z.array(z.object({ id: z.string(), job_id: z.string().nullable(), status: z.string(), subject_type: z.string(), created_at: Iso, completed_at: Iso.nullable() })).optional(),
+  last_scan: z.object({ run_id: z.string(), status: z.string(), started_at: Iso, finished_at: Iso.nullable(), tenders_total: z.number().int() }).nullable().optional(),
   note: z.string(),
 });
 

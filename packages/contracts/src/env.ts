@@ -16,6 +16,8 @@ export interface Env {
   MODEL_FAST?: string;
   MODEL_EMBED?: string;
   TOKEN_FACTORY_BASE_URL?: string;
+  DODO_BRAND_ID?: string;
+  DODO_API_BASE?: string;
 
   // Secrets (wrangler secret put / .dev.vars)
   NEBIUS_API_KEY?: string;
