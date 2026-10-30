@@ -55,7 +55,8 @@ export async function runPackPipeline(rc: RunCtx, step: Stepper): Promise<void> 
   const built = await step('read-images', async (): Promise<{ images: number; approxTokens: number }> => {
     const pack = PackText.parse(await getJson(rc, 'pack.json'));
     const vision: Record<string, string> = {};
-    const imgs = pack.docs.flatMap((d) => d.images.map((i) => ({ doc: d, ...i }))).slice(0, MAX_VISION_IMAGES);
+    // Only real image files go to the vision model. PDF image pages (r2Key is the PDF) are listed by the pack lane but cannot be sent as-is.
+    const imgs = pack.docs.flatMap((d) => d.images.filter((i) => /\.(png|jpe?g|webp|gif)$/i.test(i.r2Key)).map((i) => ({ doc: d, ...i }))).slice(0, MAX_VISION_IMAGES);
     for (const i of imgs) {
       const text = await readImage(env, { r2Key: i.r2Key, filename: i.doc.filename, onStep, fetch: rc.fetch });
       if (text) vision[i.doc.docId] = `${vision[i.doc.docId] ?? ''}${text}\n`;
@@ -120,6 +121,7 @@ export async function runPackPipeline(rc: RunCtx, step: Stepper): Promise<void> 
     return writeVerdict(env, { workspaceId: rc.workspaceId, tenderId: rc.tenderId, runId: rc.runId, lot: l.lot_no, gates, pack: text, docNames, onStep, fetch: rc.fetch });
   })));
   await step('approval', async () => {
+    await env.DB.prepare('DELETE FROM verdicts WHERE workspace_id = ? AND tender_id = ? AND (run_id IS NULL OR run_id != ?)').bind(rc.workspaceId, rc.tenderId, rc.runId).run();
     await emit(env, rc.workspaceId, 'approval.requested', {
       kind: 'bid_decision', tender_id: rc.tenderId, run_id: rc.runId,
       title: 'Review bid / no-bid verdicts', detail: verdicts.map((v) => `Lot ${v.lot}: ${v.decision} (${v.score}/100)`).join('; '),

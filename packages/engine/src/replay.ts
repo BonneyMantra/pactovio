@@ -47,7 +47,7 @@ async function restore(env: Env, s: ReplaySnapshot): Promise<void> {
   const w = await env.DB.prepare('SELECT profile_json FROM workspaces WHERE id = ?').bind(s.workspace_id).first<{ profile_json: string }>();
   if (w) await ensureProfileEvidence(env, s.workspace_id, JSON.parse(w.profile_json) as CompanyProfile);
   const stmts: D1PreparedStatement[] = [];
-  for (const table of Object.values(TABLES)) stmts.push(env.DB.prepare(`DELETE FROM ${table} WHERE workspace_id = ? AND tender_id = ?`).bind(s.workspace_id, s.tender_id));
+  for (const table of Object.values(TABLES)) stmts.push(env.DB.prepare(`DELETE FROM ${table} WHERE workspace_id = ? AND tender_id = ?${table === 'answers' ? " AND (status = 'draft' OR id LIKE 'ans_sample%')" : ''}`).bind(s.workspace_id, s.tender_id));
   for (const [key, table] of Object.entries(TABLES)) {
     for (const row of s[key as keyof typeof TABLES]) {
       const cols = Object.keys(row);

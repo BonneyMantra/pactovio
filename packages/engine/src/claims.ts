@@ -74,7 +74,8 @@ function evidenceKeys(ev: Evidence[]): Map<string, Set<string>> {
 }
 
 export function splitSentences(text: string): string[] {
-  return text.replace(/\s+/g, ' ').match(/[^.!?]+(?:[.!?]+(?=\s|$)|$)/g)?.map((s) => s.trim()).filter(Boolean) ?? [];
+  // split after . ! ? followed by whitespace, so decimals ("9.8 million") and refs ("B1.1.1") stay intact
+  return text.replace(/\s+/g, ' ').trim().split(/(?<=[.!?])\s+/).filter(Boolean);
 }
 
 export interface ClaimOptions { /** Names that may be mentioned freely: the bidder and the buyer. */ allow?: string[] }
@@ -113,12 +114,13 @@ export async function claimCheck(text: string, evidence: Evidence[], opts?: Clai
 
 export const NEEDS_EVIDENCE_TAG = '[NEEDS_EVIDENCE';
 
-/** Strike every unsupported sentence from the draft and leave a visible NEEDS_EVIDENCE flag in its place. */
+/** Strike every unsupported sentence from the draft and leave a visible NEEDS_EVIDENCE flag naming what is missing. */
 export function strikeUnsupported(draft: string, claims: ClaimT[]): string {
   let out = draft;
   for (const c of claims) {
     if (c.supported) continue;
-    const flag = `${NEEDS_EVIDENCE_TAG}: "${c.text.split(/\s+/).slice(0, 7).join(' ')}..." has no supporting evidence]`;
+    const missing = claimTokens(c.text).map((t) => `${t.type} ${t.key}`).slice(0, 4).join(', ');
+    const flag = `${NEEDS_EVIDENCE_TAG}: unsupported claim removed (${missing})]`;
     const pattern = c.text.split(/\s+/).map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('\\s+');
     out = out.replace(new RegExp(pattern), () => flag);
   }

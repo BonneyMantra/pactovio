@@ -60,7 +60,8 @@ export async function ensureEmbeddings(env: Env, workspaceId: string, o: { onSte
     chunkText(e.text).forEach((t, seq) => stmts.push(env.DB.prepare('INSERT INTO evidence_chunks (id, evidence_id, workspace_id, seq, text, embedding_json) VALUES (?, ?, ?, ?, ?, NULL)').bind(newId('chunk'), e.id, workspaceId, seq, t)));
   }
   for (let i = 0; i < stmts.length; i += 50) await env.DB.batch(stmts.slice(i, i + 50));
-  const missing = (await env.DB.prepare('SELECT id, text FROM evidence_chunks WHERE workspace_id = ? AND embedding_json IS NULL').bind(workspaceId).all<{ id: string; text: string }>()).results;
+  // embed "title + chunk" so a short chunk keeps the context of the document it belongs to
+  const missing = (await env.DB.prepare('SELECT c.id, e.title || char(10) || c.text AS text FROM evidence_chunks c JOIN evidence e ON e.id = c.evidence_id WHERE c.workspace_id = ? AND c.embedding_json IS NULL').bind(workspaceId).all<{ id: string; text: string }>()).results;
   const total = (await env.DB.prepare('SELECT COUNT(*) AS n FROM evidence_chunks WHERE workspace_id = ?').bind(workspaceId).first<{ n: number }>())?.n ?? 0;
   if (!missing.length) return { chunks: total, embedded: 0 };
   const vecs = await embed(missing.map((m) => m.text), { env, role: 'embed', purpose: `Embed ${missing.length} evidence chunks (cached in D1)`, onStep: o.onStep, fetch: o.fetch });

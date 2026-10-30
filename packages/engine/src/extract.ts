@@ -18,7 +18,7 @@ const NO_THINK = { chat_template_kwargs: { enable_thinking: false } };
 export async function extractOverview(c: Common) {
   const task = `Return the tender overview.
 - lots: every lot with its number, title, estimated value in whole euros (use clarified values) and the filename of its tenderer response form if there is one.
-- gates: every PASS/FAIL selection criterion (financial standing / turnover, tax compliance, insurance levels per cover type, health and safety, professional ability, certifications such as ISO 27001, number of references, exclusion grounds). One item per distinct criterion; lot = null when it applies to all lots. Lift numbers exactly (turnover in whole euros and over how many years, cover limits in whole euros, number of references and look-back years).
+- gates: every PASS/FAIL selection criterion (financial standing / turnover, tax compliance, insurance levels per cover type, health and safety, professional ability, certifications such as ISO 27001, number of references, exclusion grounds). One item per distinct criterion (insurance: one gate per cover type, each with its own limit, ref like "A4 public liability"); lot = null when it applies to all lots. Lift numbers exactly (turnover in whole euros and over how many years, cover limits in whole euros, number of references and look-back years).
 - deadlines: submission deadline, clarification query deadline, any other dated milestone (ISO 8601; times are Irish local = GMT/UTC unless the pack says otherwise).
 - submission_deadline: the closing date/time for tender responses.
 - clarifications: every numbered clarification with the query, the buyer response, and what it affects.

@@ -26,7 +26,7 @@ export const Overview = z.object({
   buyer: z.string(),
   procedure: z.string().nullable(),
   submission_deadline: z.string().nullable().describe('ISO 8601 with offset, e.g. 2026-11-19T14:00:00+00:00'),
-  lots: z.array(z.object({ lot_no: z.string(), title: z.string(), value_eur: z.number().nullable(), response_form_doc: z.string().nullable() })),
+  lots: z.array(z.object({ lot_no: z.string().describe('The lot number only, e.g. "1"'), title: z.string(), value_eur: z.number().nullable(), response_form_doc: z.string().nullable() })),
   gates: z.array(GateSpec),
   deadlines: z.array(z.object({ label: z.string(), at: z.string().describe('ISO 8601 date or datetime'), doc: z.string(), page: z.number().int().nullable() })),
   clarifications: z.array(z.object({ no: z.string(), query: z.string(), response: z.string(), affects: z.string().nullable().describe('Requirement refs or topic changed by the response') })),

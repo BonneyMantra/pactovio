@@ -18,6 +18,8 @@ export async function persistRequirements(
   const db = env.DB;
   const stmts: D1PreparedStatement[] = [
     db.prepare('DELETE FROM requirements WHERE workspace_id = ? AND tender_id = ?').bind(o.workspaceId, o.tenderId),
+    // clean slate for the drafts of the previous run and the seeded sample drafts; approved answers are kept
+    db.prepare("DELETE FROM answers WHERE workspace_id = ? AND tender_id = ? AND (status = 'draft' OR id LIKE 'ans_sample%')").bind(o.workspaceId, o.tenderId),
   ];
   const ins = db.prepare('INSERT INTO requirements (id, workspace_id, tender_id, lot, ref, text, kind, weight, doc_id, page, status, evidence_ids_json, note) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
   for (const g of o.gates) {
