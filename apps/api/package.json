@@ -1,0 +1,28 @@
+{
+  "name": "@pactovio/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bash ./dev.sh",
+    "db:migrate:local": "bash ./cf.sh d1 migrations apply pactovio --local",
+    "db:migrate:remote": "bash ./cf.sh d1 migrations apply pactovio --remote",
+    "seed:local": "tsx scripts/seed.ts && bash ./cf.sh d1 execute pactovio --local --file=.seed.sql",
+    "seed:remote": "tsx scripts/seed.ts && bash ./cf.sh d1 execute pactovio --remote --file=.seed.sql"
+  },
+  "dependencies": {
+    "@hono/zod-openapi": "^1.1.0",
+    "@pactovio/agent": "*",
+    "@pactovio/billing": "*",
+    "@pactovio/connectors": "*",
+    "@pactovio/contracts": "*",
+    "@pactovio/engine": "*",
+    "@pactovio/events": "*",
+    "@pactovio/models": "*",
+    "@pactovio/pack": "*",
+    "@pactovio/quote": "*",
+    "@pactovio/sources": "*",
+    "hono": "^4.9.0",
+    "zod": "^4.1.0"
+  }
+}

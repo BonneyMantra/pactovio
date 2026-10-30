@@ -1,0 +1,15 @@
+name = "pactovio"
+pages_build_output_dir = "public"
+compatibility_date = "2026-09-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Service bindings for Pages (`public/_worker.js` routes between them).
+[[services]]
+binding = "API"
+service = "pactovio-api"
+
+# WEB is OPTIONAL until Gabriel's UI Worker exists. While unbound, _worker.js falls back to API
+# for every path. Uncomment once `pactovio-web` is deployed.
+# [[services]]
+# binding = "WEB"
+# service = "pactovio-web"

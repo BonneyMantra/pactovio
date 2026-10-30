@@ -1,0 +1,4 @@
+.env.local
+.dev.vars
+.wrangler
+.seed.sql

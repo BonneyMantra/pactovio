@@ -1,0 +1,68 @@
+name = "pactovio-api"
+main = "src/index.ts"
+compatibility_date = "2026-09-01"
+compatibility_flags = ["nodejs_compat"]
+workers_dev = false
+preview_urls = false
+
+[observability]
+enabled = true
+
+[vars]
+ENVIRONMENT = "production"
+MODEL_REASON = "nvidia/Nemotron-3-Ultra-550b-a55b"
+MODEL_AGENT = "nvidia/Nemotron-3.5-Super-VL"
+MODEL_FAST = "nvidia/Nemotron-3_5-Lightning"
+MODEL_EMBED = "Qwen/Qwen3-Embedding-8B"
+TOKEN_FACTORY_BASE_URL = "https://api.tokenfactory.nebius.com/v1/"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "pactovio"
+database_id = "f8835f8a-70b9-47cf-8b03-d60ead8699ef"
+migrations_dir = "migrations"
+
+[[r2_buckets]]
+binding = "FILES"
+bucket_name = "pactovio-files"
+
+[[kv_namespaces]]
+binding = "CACHE"
+id = "ae2a5d52127444bc9daf6e42a6d17168"
+
+[[workflows]]
+name = "pactovio-pack-run"
+binding = "PACK_RUN"
+class_name = "PackRunWorkflow"
+
+[[workflows]]
+name = "pactovio-scan"
+binding = "SCAN"
+class_name = "ScanWorkflow"
+
+[[workflows]]
+name = "pactovio-intake"
+binding = "INTAKE"
+class_name = "IntakeWorkflow"
+
+[[durable_objects.bindings]]
+name = "AGENT"
+class_name = "AgentHub"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["AgentHub"]
+
+[[queues.producers]]
+binding = "EVENTS"
+queue = "pactovio-events"
+
+[[queues.consumers]]
+queue = "pactovio-events"
+max_batch_size = 10
+max_batch_timeout = 5
+max_retries = 3
+
+[triggers]
+# 22:00 UTC = 06:00 MYT, nightly tender scan
+crons = ["0 22 * * *"]
