@@ -66,21 +66,21 @@ describe('streamToolLoop', () => {
     expect(statuses).toEqual(['running', 'pending_confirmation']);
   });
 
-  it('falls back to MODEL_REASON after two failures of the agent model', async () => {
+  it('falls back to the 120B text model after two failures of the agent model, never to Ultra (spend cap)', async () => {
     const seen: { model: string; body: Record<string, unknown> }[] = [];
     const f = (async (_u: string, init: RequestInit) => {
       const body = JSON.parse(String(init.body)) as Record<string, unknown>;
       seen.push({ model: String(body.model), body });
       if (body.model === 'agent-model') return new Response(JSON.stringify({ error: { message: 'tool calling unsupported' } }), { status: 400, headers: { 'content-type': 'application/json' } });
-      return text('Answered by the reasoning model.');
+      return text('Answered by the text fallback.');
     }) as unknown as typeof fetch;
     const r = await streamToolLoop({ ...base, fetch: f, runTool: vi.fn() });
     expect(r.fellBack).toBe(true);
-    expect(r.text).toBe('Answered by the reasoning model.');
-    expect(models(seen)).toEqual(['agent-model', 'agent-model', 'reason-model']);
+    expect(r.text).toBe('Answered by the text fallback.');
+    expect(models(seen)).toEqual(['agent-model', 'agent-model', 'nvidia/nemotron-3-super-120b-a12b']);
   });
 
-  it('a 404 for the agent model (withdrawn) moves to the text fallback at once, then to MODEL_REASON if that is gone too', async () => {
+  it('a 404 for the agent model (withdrawn) moves to the text fallback at once; if that is gone too the turn fails, with no Ultra fallback', async () => {
     const seen: { model: string; body: Record<string, unknown> }[] = [];
     const gone = () => new Response(JSON.stringify({ error: { message: 'The model does not exist' } }), { status: 404, headers: { 'content-type': 'application/json' } });
     const f = (async (_u: string, init: RequestInit) => {
@@ -99,9 +99,8 @@ describe('streamToolLoop', () => {
       seen2.push(m);
       return m === 'reason-model' ? text('Reasoning answered.') : gone();
     }) as unknown as typeof fetch;
-    const r2 = await streamToolLoop({ ...base, fetch: f2, runTool: vi.fn() });
-    expect(seen2).toEqual(['agent-model', 'nvidia/nemotron-3-super-120b-a12b', 'reason-model']);
-    expect(r2.text).toBe('Reasoning answered.');
+    await expect(streamToolLoop({ ...base, fetch: f2, runTool: vi.fn() })).rejects.toBeTruthy();
+    expect(seen2).toEqual(['agent-model', 'nvidia/nemotron-3-super-120b-a12b']);
   });
 
   it('malformed tool arguments count as failures and trigger the same fallback', async () => {

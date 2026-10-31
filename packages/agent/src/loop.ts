@@ -1,4 +1,4 @@
-import { costUsd, isModelUnavailable, makeClient, modelFor, stripThinking, TEXT_FALLBACK_MODEL, type ChatMessage } from '@pactovio/models';
+import { costUsd, isBudgetError, isModelUnavailable, makeClient, modelFor, stripThinking, TEXT_FALLBACK_MODEL, type ChatMessage } from '@pactovio/models';
 import type { Env } from '@pactovio/contracts/env';
 import { toolJsonSchema } from './gate';
 import { AGENT_CAPS, type AgentTool } from './types';
@@ -127,7 +127,7 @@ async function streamStep(p: StreamLoopParams, model: string, messages: ChatMess
 
 /**
  * Streaming tool loop on MODEL_AGENT (Nemotron 3.5 Super VL). Same fallback contract as @pactovio/models toolLoop:
- * after two failures (request errors or malformed tool calls) the run continues on MODEL_REASON (Ultra).
+ * after two failures (request errors or malformed tool calls) the run continues on the 120B text model; there is no Ultra fallback (spend cap).
  * `runTool` is where confirmation gating happens; a pending tool result tells the model to wait.
  */
 export async function streamToolLoop(p: StreamLoopParams): Promise<StreamLoopResult> {
@@ -141,9 +141,10 @@ export async function streamToolLoop(p: StreamLoopParams): Promise<StreamLoopRes
   let model = modelFor(p.env, 'agent');
   const maxSteps = p.maxSteps ?? AGENT_CAPS.maxToolSteps;
   let steps = 0;
+  // Spend cap: no Ultra fallback for chat. Super VL, then (on 404 or two failures) the 120B text model, then give up.
   const fail = (): void => {
     failures++;
-    if (failures >= 2 && role !== 'reason') { role = 'reason'; fellBack = true; failures = 0; }
+    if (failures >= 2 && role === 'agent') { role = 'text'; fellBack = true; failures = 0; }
   };
   let guard = 0;
   while (steps < maxSteps && guard++ < maxSteps + 6) {
@@ -151,11 +152,12 @@ export async function streamToolLoop(p: StreamLoopParams): Promise<StreamLoopRes
     let out: StepOut;
     try {
       modelCalls++;
-      out = await streamStep(p, model, messages, specs, role === 'reason');
+      out = await streamStep(p, model, messages, specs, false);
     } catch (e) {
-      if (role === 'reason' && failures >= 1) throw e;
-      if (role === 'reason') { failures++; continue; }
-      if (isModelUnavailable(e)) { role = role === 'agent' ? 'text' : 'reason'; fellBack = true; failures = 0; continue; }
+      if (isBudgetError(e)) throw e; // daily cap or kill switch: never try another model
+      if (role === 'text' && (failures >= 1 || isModelUnavailable(e))) throw e;
+      if (role === 'text') { failures++; continue; }
+      if (isModelUnavailable(e)) { role = 'text'; fellBack = true; failures = 0; continue; }
       fail();
       continue;
     }

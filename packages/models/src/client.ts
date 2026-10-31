@@ -1,6 +1,7 @@
 import OpenAI from 'openai';
 import type { ModelEnv } from '@pactovio/contracts/env';
 import type { CallOptions, ModelRole } from './types';
+import { budgetedFetch } from './budget';
 
 export const DEFAULT_BASE = 'https://api.tokenfactory.nebius.com/v1/';
 export const DEFAULT_MODELS: Record<ModelRole, string> = {
@@ -22,7 +23,8 @@ export function makeClient(env: ModelEnv, fetchImpl?: typeof fetch, timeoutMs?: 
   return new OpenAI({
     apiKey: env.NEBIUS_API_KEY,
     baseURL: env.TOKEN_FACTORY_BASE_URL || DEFAULT_BASE,
-    ...(fetchImpl ? { fetch: fetchImpl } : {}),
+    // Every request goes through the kill switch and the daily spend cap (see budget.ts).
+    fetch: budgetedFetch(env as never, fetchImpl ?? ((i: RequestInfo | URL, init?: RequestInit) => fetch(i, init))),
     maxRetries: timeoutMs ? 1 : 2,
     timeout: timeoutMs ?? 120_000,
   });

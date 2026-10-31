@@ -35,7 +35,7 @@ async function startRun(tenderId, replay, onStarted) {
     toast(replay ? 'Replaying the recorded run' : 'Pack read started on Nemotron Ultra');
     onStarted(r.run_id);
   } catch (e) {
-    toast(e.status === 429 ? 'Another fresh read is running on the shared model quota. Try the replay, or again in a few minutes.' : e.status === 402 ? 'Out of credits for fresh reads. The replay is free.' : e.message);
+    toast(e.code === 'cap_daily' || e.code === 'models_off' ? e.message : e.status === 429 ? 'Another fresh read is running on the shared model quota. Try the replay, or again in a few minutes.' : e.status === 402 ? 'Out of credits for fresh reads. The replay is free.' : e.message);
   }
 }
 
@@ -78,6 +78,15 @@ export async function render(root, { id, rest }, ctx) {
   };
 
   const onStarted = (rid) => { runId = rid; showTab('run'); };
+  // Daily model budget: a fresh read only starts if today's remaining budget covers its estimated cost.
+  const pages = (d.documents || []).reduce((n, x) => n + (Number(x.pages) || 0), 0);
+  const need = Math.max(0.05, Math.round(pages * 0.009 * 100) / 100);
+  const budget = (await api('/limits').catch(() => null))?.model_budget;
+  const fits = !budget || (!budget.models_disabled && budget.remaining_usd >= need);
+  const freshBtn = h('button.btn.btn-primary.btn-sm', {
+    onclick: () => startRun(id, false, onStarted), disabled: fits ? null : true,
+    title: budget ? `A fresh read of this pack costs about $${need.toFixed(2)} of model time. Today's model budget: $${budget.remaining_usd.toFixed(2)} left of $${budget.cap_usd.toFixed(2)} (resets 08:00 MYT).` : 'Reads the whole pack again on Nemotron Ultra',
+  }, icon('bolt', 14), fits ? `Fresh read · ~$${need.toFixed(2)}` : `Fresh read · ~$${need.toFixed(2)}, over today's $${(budget?.cap_usd ?? 0.25).toFixed(2)} budget`);
   const meta = [t.buyer, t.country, t.value_eur ? fmt.moneyMajor(t.value_eur, 'EUR') : null, t.source ? `via ${t.source}` : null].filter(Boolean);
   const head = h('div.wk-thead',
     fitRing(m?.fit_score, 52),
@@ -90,7 +99,7 @@ export async function render(root, { id, rest }, ctx) {
       h('div.wk-actions',
         t.url ? h('a.btn.btn-secondary.btn-sm', { href: t.url, target: '_blank', rel: 'noopener' }, 'Source', icon('out', 14)) : null,
         h('button.btn.btn-secondary.btn-sm', { onclick: () => startRun(id, true, onStarted), title: 'Free: plays back the recorded showcase run' }, icon('refresh', 14), 'Replay'),
-        h('button.btn.btn-primary.btn-sm', { onclick: () => startRun(id, false, onStarted), title: 'Reads the whole pack again on Nemotron Ultra' }, icon('bolt', 14), 'Fresh read'))));
+        freshBtn)));
 
   const reqSummary = counts.total ? h('div.wk-reqsum', ['MET', 'PARTIAL', 'GAP', 'NEEDS_EVIDENCE'].map((s) => h('div.wk-reqsum-i', chip(s), h('span.num.small', String(counts[s] ?? 0)))), h('span.xs.muted', `${counts.total} requirements read from ${(d.documents || []).length || dash} documents`)) : null;
 

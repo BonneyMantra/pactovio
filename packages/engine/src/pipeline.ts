@@ -1,3 +1,4 @@
+import { budgetMessage, isBudgetError } from '@pactovio/models';
 import { HttpError, PackText, type CompanyProfile } from '@pactovio/contracts';
 import { emit } from '@pactovio/events';
 import { normRef } from './docx-fill';
@@ -159,7 +160,7 @@ export async function runPackPipeline(rc: RunCtx, step: Stepper): Promise<void> 
 }
 
 export async function failRun(rc: RunCtx, err: unknown): Promise<void> {
-  const msg = err instanceof Error ? err.message.slice(0, 300) : 'run failed';
+  const msg = isBudgetError(err) ? budgetMessage(err) : err instanceof Error ? err.message.slice(0, 300) : 'run failed';
   try {
     await logStep(rc.env, rc.runId, rc.workspaceId, { purpose: 'Run failed', model: '', status: 'error', tokensIn: 0, tokensOut: 0, tokensCached: 0, ms: 0, costUsd: 0, summary: msg });
     await rc.env.DB.prepare("UPDATE runs SET status = 'failed', finished_at = ? WHERE id = ?").bind(nowIso(), rc.runId).run();

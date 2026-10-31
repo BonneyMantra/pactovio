@@ -16,6 +16,10 @@ MODEL_FAST = "nvidia/Nemotron-3_5-Lightning"
 MODEL_EMBED = "Qwen/Qwen3-Embedding-8B"
 TOKEN_FACTORY_BASE_URL = "https://api.tokenfactory.nebius.com/v1/"
 PUBLIC_ORIGIN = "https://pactovio.pages.dev"
+# Hard daily cap on every Token Factory call (USD at list prices, resets 00:00 UTC = 08:00 MYT).
+MODEL_DAILY_CAP_USD = "0.25"
+# Kill switch: "1" stops every model call. Also settable without a deploy: KV key config:models_disabled = "1".
+MODELS_DISABLED = "0"
 
 [[d1_databases]]
 binding = "DB"

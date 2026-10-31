@@ -1,3 +1,4 @@
+import { capUsd, modelsDisabled, spentTodayUsd } from '@pactovio/models';
 import { chargeCredits, CREDIT_COSTS, refundCredits } from '@pactovio/billing';
 import { HttpError, newId } from '@pactovio/contracts';
 import type { Env } from '@pactovio/contracts/env';
@@ -19,6 +20,9 @@ export function packCredits(pages: number): number {
  * and takes the single global fresh-run slot (the Token Factory quota is shared with other products), all atomically.
  * One run per tender and workspace at a time.
  */
+/** Estimated list-price cost of a fresh read: measured runs cost about $0.009 a page (107 pages ~$0.95, 205 pages ~$1.46). */
+export const freshReadEstimateUsd = (pages: number): number => Math.max(0.05, Math.round(pages * 0.009 * 100) / 100);
+
 export async function startPackRunImpl(env: Env, input: { workspaceId: string; tenderId: string; sessionId?: string; replay?: boolean }): Promise<string> {
   const db = env.DB;
   if (!(await db.prepare('SELECT 1 AS x FROM tenders WHERE id = ?').bind(input.tenderId).first())) throw new HttpError(404, 'Tender not found', 'not_found');
@@ -38,6 +42,12 @@ export async function startPackRunImpl(env: Env, input: { workspaceId: string; t
   if (replay) {
     await db.prepare(`${insert} VALUES (?, ?, 'tender', ?, 'pack_run', 'queued', ?, 1)`).bind(runId, input.workspaceId, input.tenderId, nowIso()).run();
   } else {
+    // Daily spend cap: only start a fresh read if today's remaining budget covers its estimated cost.
+    const pagesForEstimate = (await db.prepare('SELECT COALESCE(SUM(pages), 0) AS n FROM documents WHERE tender_id = ?').bind(input.tenderId).first<{ n: number }>())?.n ?? 0;
+    const need = freshReadEstimateUsd(pagesForEstimate);
+    const left = Math.max(0, capUsd(env) - (await spentTodayUsd(env)));
+    if (await modelsDisabled(env)) throw new HttpError(429, 'Model calls are switched off.', 'models_off');
+    if (need > left) throw new HttpError(429, `A fresh read of this pack needs about $${need.toFixed(2)} of model time and today's remaining budget is $${left.toFixed(2)} of $${capUsd(env).toFixed(2)}. Daily limit reached. Try again after 08:00 MYT.`, 'cap_daily');
     await consumeFreshRun(db, input.sessionId);
     try {
       if (ws.sample !== 1) {

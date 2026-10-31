@@ -1,9 +1,9 @@
 import { NotImplemented, newId, type DocKind, type IntakeSource } from '@pactovio/contracts';
 import type { Env } from '@pactovio/contracts/env';
-import { startPackRun } from '@pactovio/engine';
 import { emit } from '@pactovio/events';
 import { matchDesignRequest } from '@pactovio/quote';
 import { classifyEmail, type Classification, type InboundMessage } from './classify';
+import { budgetMessage, isBudgetError } from '@pactovio/models';
 import { fetchGmail, fetchOutlook, splitAddress, type RawFile } from './inbound-mail';
 import { makeCtx, runAction, type Deps } from './runtime';
 import { getConnector, isLive } from './store';
@@ -71,9 +71,17 @@ const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(
 
 /** Workflow step 2: classify with Lightning, record it, and move the intake to the right workspace of a shared mailbox. */
 export async function classifyStep(env: Env, job: IntakeJob, msg: InboundMessage, deps: Deps = {}): Promise<{ cls: Classification; workspaceId: string }> {
-  const cls: Classification = job.forceDoor
-    ? { door: job.forceDoor, confidence: 1, reason: 'Door chosen by the user', customer: '', subject: msg.subject }
-    : await classifyEmail(env, msg, { fetch: deps.fetch });
+  let cls: Classification;
+  try {
+    cls = job.forceDoor
+      ? { door: job.forceDoor, confidence: 1, reason: 'Door chosen by the user', customer: '', subject: msg.subject }
+      : await classifyEmail(env, msg, { fetch: deps.fetch });
+  } catch (e) {
+    if (isBudgetError(e)) { // honest state: the intake waits; nothing is guessed
+      await env.DB.prepare("UPDATE intakes SET status = 'new', classification_json = ? WHERE id = ?").bind(JSON.stringify({ reason: budgetMessage(e) }), job.intakeId).run();
+    }
+    throw e;
+  }
   let ws = job.workspaceId;
   if (cls.door === 'design' && (job.candidates?.length ?? 0) > 1) {
     const ph = job.candidates!.map(() => '?').join(',');
@@ -123,8 +131,8 @@ export async function routeStep(env: Env, job: IntakeJob, ws: string, msg: Inbou
       catch (e) { note = e instanceof NotImplemented ? 'design match not available yet' : `design match failed: ${e instanceof Error ? e.message.slice(0, 120) : 'unknown'}`; await env.DB.prepare("UPDATE intakes SET status = 'classified' WHERE id = ?").bind(job.intakeId).run(); }
     } else if (cls.door === 'rfp' || cls.door === 'tender') {
       tenderId = await createTenderFromRfp(env, job, msg, cls);
-      try { runId = await startPackRun(env, { workspaceId: ws, tenderId }); }
-      catch (e) { note = e instanceof NotImplemented ? 'pack run not available yet' : `pack run not started: ${e instanceof Error ? e.message.slice(0, 120) : 'unknown'}`; await env.DB.prepare("UPDATE intakes SET status = 'classified' WHERE id = ?").bind(job.intakeId).run(); }
+      // Spend cap: never start a fresh pack read on its own. The tender waits for a person to press Fresh read.
+      await env.DB.prepare("UPDATE intakes SET status = 'classified' WHERE id = ?").bind(job.intakeId).run();
     }
   } catch (e) {
     note = `routing failed: ${e instanceof Error ? e.message.slice(0, 160) : 'unknown'}`;

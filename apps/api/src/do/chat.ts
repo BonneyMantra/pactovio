@@ -1,3 +1,4 @@
+import { budgetMessage, isBudgetError } from '@pactovio/models';
 import {
   AGENT_CAPS, agentTools, checkTokenBudget, checkTurnCap, invokeTool, systemPrompt, type ToolRunResult,
 } from '@pactovio/agent';
@@ -80,6 +81,11 @@ export async function runTurn(deps: HubDeps, input: { sessionId: string | null; 
     store.addUsage(session, res.tokensIn + res.tokensOut, res.costUsd);
     text = res.text || (pending.length ? 'Waiting for your confirmation above.' : 'I have nothing to add.');
   } catch (e) {
+    if (isBudgetError(e)) {
+      const code = (e as { code?: string }).code === 'models_off' ? 'models_off' : 'cap_daily';
+      deps.send({ type: 'error', error: budgetMessage(e), code }, scope);
+      return refuse(429, budgetMessage(e), code);
+    }
     console.error('agent turn failed', e instanceof Error ? e.name : 'unknown');
     deps.send({ type: 'error', error: 'The agent could not reach the model. Try again in a moment.', code: 'model_error' }, scope);
     deps.send({ type: 'done', thread_id: threadId }, scope);

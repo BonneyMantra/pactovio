@@ -1,3 +1,4 @@
+import { capUsd, modelsDisabled, spentTodayUsd } from '@pactovio/models';
 import { endpoints } from '@pactovio/contracts';
 import { CONCURRENCY, INFERENCE_SHARED, SESSION_CAPS, TAVILY_BUDGET, tavilyDayUsed, tavilyMonthUsed } from '@pactovio/billing';
 import { PRICES_ARE_ESTIMATES } from '@pactovio/models';
@@ -30,9 +31,10 @@ export const register: Register = (r) => {
         session_used: s?.tavily_used ?? 0, session_cap: SESSION_CAPS.tavily,
         day_used: await tavilyDayUsed(env), day_cap: TAVILY_BUDGET.day, month_used: await tavilyMonthUsed(env), month_budget: TAVILY_BUDGET.month,
       },
+      model_budget: { cap_usd: capUsd(env), spent_today_usd: Number((await spentTodayUsd(env)).toFixed(4)), remaining_usd: Number(Math.max(0, capUsd(env) - (await spentTodayUsd(env))).toFixed(4)), resets_at_utc: '00:00', resets_at_myt: '08:00', models_disabled: await modelsDisabled(env), counts: 'every Token Factory call, at list prices' },
       audits,
       last_scan: scan ? { run_id: scan.id, status: scan.status, started_at: scan.started_at, finished_at: scan.finished_at, tenders_total: tenders } : null,
-      note: 'Usage is summed from live run steps (replays excluded); prices are estimates. Inference quota is the shared Nebius Token Factory limit across six products.',
+      note: 'Usage is summed from live run steps (replays excluded) at Token Factory list prices. Model calls stop for the day once model_budget.cap_usd is reached. Inference quota is the shared Nebius Token Factory limit across six products.',
     };
   });
 };

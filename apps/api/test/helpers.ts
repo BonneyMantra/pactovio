@@ -14,7 +14,8 @@ function statements(sql: string): string[] {
 /** Fresh local D1 (temp dir), migrated and seeded, plus a real Worker env from wrangler.toml bindings. */
 export async function makeEnv(): Promise<{ env: Env; dispose: () => Promise<void> }> {
   const proxy = await getPlatformProxy<Env>({ configPath: join(root, 'wrangler.toml'), persist: { path: mkdtempSync(join(tmpdir(), 'pactovio-test-')) } });
-  const env = { ...proxy.env, ENVIRONMENT: 'development' } as Env;
+  // Tests replay many recorded model calls; production keeps the default $0.25/day cap (budget.test.ts covers the cap).
+  const env = { ...proxy.env, ENVIRONMENT: 'development', MODEL_DAILY_CAP_USD: '1000' } as Env;
   const sql = readFileSync(join(root, 'migrations/0001_init.sql'), 'utf8');
   for (const s of [...statements(sql), ...statements(buildSeed())]) await env.DB.prepare(s).run();
   return { env, dispose: () => proxy.dispose() };

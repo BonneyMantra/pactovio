@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { chatJSON, type StepLogger } from '@pactovio/models';
+import { chatJSON, type StepLogger, isBudgetError } from '@pactovio/models';
 import type { Env } from '@pactovio/contracts/env';
 
 export interface InboundMessage {
@@ -56,6 +56,7 @@ export async function classifyEmail(env: Env, msg: InboundMessage, opts: { onSte
     });
     return data;
   } catch (e) {
+    if (isBudgetError(e)) throw e; // daily cap or kill switch: no keyword guess in place of the model
     console.error('classifyEmail failed', e instanceof Error ? e.message : 'unknown');
     return heuristicClassify(msg);
   }

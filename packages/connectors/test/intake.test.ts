@@ -153,17 +153,17 @@ describe('intake pipeline', () => {
     expect((await env.DB.prepare("SELECT status FROM intakes WHERE id = 'int_design2'").first<{ status: string }>())!.status).toBe('classified');
   });
 
-  it('RFP: creates an upload tender, links the documents and starts the pack run', async () => {
+  it('RFP: creates an upload tender and links the documents, but never starts a pack read on its own (spend cap)', async () => {
     await insert('int_rfp');
     await env.DB.prepare("INSERT INTO documents (id, intake_id, workspace_id, filename, kind, r2_key) VALUES ('doc_rfp1', 'int_rfp', 'ws_harbour_digital', 'RFP.pdf', 'pdf', 'intakes/int_rfp/0-RFP.pdf')").run();
     lane.run.mockResolvedValue('run_abc');
     const r = await routeStep(env, job('int_rfp'), 'ws_harbour_digital', RFP, { door: 'rfp', confidence: 0.95, reason: 'RFP with deadline', customer: 'Corran County Council', subject: 'Planning enforcement case management (RFP CCC-2026-14)' });
-    expect(lane.run).toHaveBeenCalledWith(env, { workspaceId: 'ws_harbour_digital', tenderId: r.tenderId });
+    expect(lane.run).not.toHaveBeenCalled();
     const t = await env.DB.prepare('SELECT source, source_ref, buyer, buyer_key FROM tenders WHERE id = ?').bind(r.tenderId).first<Record<string, string>>();
     expect(t).toMatchObject({ source: 'upload', source_ref: 'int_rfp', buyer: 'Corran County Council', buyer_key: 'corran-county-council' });
     expect((await env.DB.prepare("SELECT tender_id FROM documents WHERE id = 'doc_rfp1'").first<{ tender_id: string }>())!.tender_id).toBe(r.tenderId);
-    expect(await env.DB.prepare("SELECT status, tender_id FROM intakes WHERE id = 'int_rfp'").first()).toMatchObject({ status: 'processing', tender_id: r.tenderId });
-    expect(r.runId).toBe('run_abc');
+    expect(await env.DB.prepare("SELECT status, tender_id FROM intakes WHERE id = 'int_rfp'").first()).toMatchObject({ status: 'classified', tender_id: r.tenderId });
+    expect(r.runId).toBeNull();
   });
 
   it('other: the intake is ignored, nothing is created, no draft is written', async () => {
