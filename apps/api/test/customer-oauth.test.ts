@@ -29,7 +29,9 @@ it('sets HttpOnly state cookie and completes the verifier callback using the aut
   expect(started.status).toBe(200);
   const header = started.headers.get('set-cookie')!;
   expect(header).toContain('HttpOnly'); expect(header).toContain('Secure'); expect(header).toContain('Path=/api/connectors');
-  const oauth = header.split(';')[0]!;
+  const cookies = started.headers.getSetCookie();
+  expect(cookies.some(c => c.startsWith('pv_integration_oauth=;') && c.includes('Max-Age=0'))).toBe(true);
+  const oauth = cookies.find(c => c.startsWith('pv_oauth='))!.split(';')[0]!;
   const returned = await call('/connectors/verifier?session_uri=opaque-provider-session', `${customer.cookie}; ${oauth}`);
   expect(returned.status).toBe(302);
   expect(returned.headers.get('location')).toBe('/app#/connections?connector=slack&status=success');

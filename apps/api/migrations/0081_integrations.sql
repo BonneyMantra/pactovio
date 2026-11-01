@@ -17,6 +17,7 @@ CREATE TABLE integration_oauth_states (
   session_id TEXT NOT NULL REFERENCES customer_sessions(id),
   toolkit TEXT NOT NULL,
   account_id TEXT,
+  initiation_complete INTEGER NOT NULL DEFAULT 0,
   auth_scheme TEXT NOT NULL,
   origin TEXT NOT NULL,
   return_path TEXT NOT NULL,

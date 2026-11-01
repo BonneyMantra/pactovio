@@ -38,15 +38,27 @@ export function decodePage(adapter: Adapter, data: any, cursor: unknown): { rows
   let records: any[] = [], next: string | number | null = null;
   switch (adapter) {
     case 'zoho_inventory': case 'zoho_books':
-      records = array(data.items); next = data.page_context?.has_more_page === false || records.length < 50 ? null : Number(cursor ?? 1) + 1; break;
+      records = array(data.items);
+      next = data.page_context?.has_more_page === true ? Number(cursor ?? 1) + 1
+        : data.page_context?.has_more_page === false || records.length < 50 ? null : Number(cursor ?? 1) + 1; break;
     case 'shopify': records = array(data.products); next = cursorValue(data.next_page_info); break;
     case 'square': records = array(data.objects ?? []); next = cursorValue(data.cursor); break;
     case 'stripe': records = array(data.data); next = data.has_more === true ? sourceId(records.at(-1)?.id) : null; break;
     case 'quickbooks': records = array(data.QueryResponse?.Item ?? []); next = records.length === 50 ? Number(cursor ?? 1) + 50 : null; break;
     case 'xero': records = array(data.Items); break;
-    case 'hubspot': records = array(data.results); if (data.status !== 'COMPLETE') malformed(); break;
+    case 'hubspot': records = array(data.results); next = cursorValue(data.paging?.next?.after); break;
     case 'salesforce': records = array(data.records); next = records.length === 50 ? Number(cursor ?? 0) + 50 : null; break;
-    case 'pipedrive': records = array(data.data); next = data.additional_data?.pagination?.more_items_in_collection ? cursorValue(data.additional_data.pagination.next_start) : null; break;
+    case 'pipedrive': {
+      records = array(data.data);
+      const pagination = data.additional_data?.pagination;
+      const more = pagination?.more_items_in_collection ?? data.more_items_in_collection;
+      next = cursorValue(pagination?.next_cursor ?? pagination?.next_start ?? data.next_cursor);
+      if (more === true && next === null || more === false && next !== null) malformed();
+      if (next !== null && (typeof next !== 'number' || next <= Number(cursor ?? 0))) {
+        throw new HttpError(502, 'This source pagination format needs compatibility verification.', 'source_pagination_unsupported');
+      }
+      break;
+    }
     case 'googlesheets': case 'googledrive': records = array(data.values ?? []); break;
     case 'excel': records = array(data.rows); next = data.odata_next_link ? Number(cursor ?? 0) + 50 : null; break;
     case 'airtable': records = array(data.records); next = cursorValue(data.offset); break;

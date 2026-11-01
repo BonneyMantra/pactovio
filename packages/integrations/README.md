@@ -36,7 +36,7 @@ There are 18 explicit read definitions based on the project's 1 November 2026 na
 | Stripe | `STRIPE_LIST_PRODUCTS` | Product metadata; default price is only an ID, so price stays unresolved |
 | QuickBooks | `QUICKBOOKS_QUERY_ITEMS` | Fixed SELECT of Item, bounded pages |
 | Xero | `XERO_LIST_ITEMS` | Explicit selected tenant; currency can remain unresolved |
-| HubSpot | `HUBSPOT_GET_PRODUCTS` | Explicit selected product IDs, not an invented product-list endpoint |
+| HubSpot | `HUBSPOT_LIST_PRODUCTS` | Complete selected catalogue with paginated product reads |
 | Salesforce | `SALESFORCE_RUN_SOQL_QUERY` | Fixed PricebookEntry SELECT for a selected price book |
 | Pipedrive | `PIPEDRIVE_GET_ALL_PRODUCTS` | Product/price records; user maps the chosen price entry |
 | Google Sheets | `GOOGLESHEETS_VALUES_GET` | Explicit bounded spreadsheet range; positional columns |
@@ -108,7 +108,7 @@ Mutation requests are bounded at 120 per workspace/hour; model budgets and the k
 
 Resource schemas come from `catalog_import.selection_schema` in toolkit detail. The only
 account ID accepted from a client is a local connection ID, never a remote account or user ID.
-Imports stop at 500 staged records; select a narrower next resource after approving those records.
+At most500 unapproved records are staged at once. Approving batches frees capacity, and Resume retains the source cursor so larger catalogues can continue without restarting. Use pending=true on the rows endpoint for selectable pending records; omit it for audit history.
 A read/preview/approval revision conflict requires reloading job state. `read_failed` preserves
 actual rows and the last successful cursor. Resume retries only the uncommitted page. Completed
 retrieval pages are not replayed. Partial source batches with errors are not misreported as success.
@@ -152,7 +152,7 @@ State is hashed, session/workspace/toolkit/account/origin-bound, expires in ten 
 one conditional winner. Old/replayed/mismatched callbacks cannot replace newer attempts.
 Superseded callback failures preserve the newer cookie and do not consume its state.
 A disconnect also invalidates pending callbacks and removes owned attempt accounts after remote
-identity verification. A failed remote cleanup remains explicitly retryable, never a fake success.
+identity verification. In-flight initiation remains explicitly cleanup-pending; a late-created account is removed without revoking a newer attempt. A failed remote cleanup remains explicitly retryable, never a fake success.
 
 Do not treat the environment flag alone as proof that provider project setup was performed.
 The worker did not access credentials, configure providers, migrate live storage or deploy.
@@ -161,7 +161,7 @@ verification remain the coordinator's responsibility. Existing known connectors 
 
 ## Local verification and handback limits
 
-The final focused suite has 65 passing tests across five `integration-workflows*.test.ts` files,
+The coordinator-focused suite has 69 passing tests across six `integration-workflows*.test.ts` files,
 using the existing `makeEnv`/customer fixture and real disposable SQLite transactions. Only
 provider HTTP transports are mocked. The 100-row boundary, mixed-row transaction rollback,
 manual edits, tenant/session/account/toolkit forgery, missing Origin, OAuth expiry/replay and

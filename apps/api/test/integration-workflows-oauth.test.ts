@@ -154,4 +154,24 @@ describe('universal hosted OAuth lifecycle', () => {
     expect((await f.call(`/connections/${another.connection_id}/disconnect`, {})).status).toBe(503);
     expect(t.mock.calls.filter(([, init]) => init?.method === 'DELETE')).toHaveLength(count);
   });
+  it('keeps disconnect pending and removes an account created after disconnection without revoking a newer attempt', async () => {
+    const owner = await f.env.DB.prepare('SELECT id FROM integration_connections WHERE workspace_id=? AND toolkit=?').bind(f.owner.workspace, 'hubspot').first<any>();
+    if (owner) await f.env.DB.prepare("UPDATE integration_connections SET status='disconnected',account_id=NULL,attempt_hash=NULL WHERE id=?").bind(owner.id).run();
+    let release!: () => void, entered!: () => void, linkCalls = 0;
+    const gate = new Promise<void>(r => { release = r; }), waiting = new Promise<void>(r => { entered = r; });
+    const t = transport({ link: async () => { if (++linkCalls === 1) { entered(); await gate; } } });
+    const older = f.call('/toolkits/hubspot/connect', {}); await waiting;
+    const row = await f.env.DB.prepare('SELECT id FROM integration_connections WHERE workspace_id=? AND toolkit=?').bind(f.owner.workspace, 'hubspot').first<any>();
+    const disconnected = await f.call(`/connections/${row.id}/disconnect`, {});
+    expect(disconnected.status).toBe(503); expect(await disconnected.json()).toMatchObject({ code: 'disconnect_pending' });
+    const newer = await start(); release();
+    expect((await older).status).toBe(409);
+    expect(accounts.has(newer.link.account)).toBe(true);
+    const late = links.find(link => link.account !== newer.link.account)!;
+    expect(accounts.has(late.account)).toBe(false);
+    expect(t.mock.calls.some(([url, init]) => init?.method === 'DELETE' && String(url).endsWith('/' + late.account))).toBe(true);
+    expect((await callback(newer.link)).headers.get('location')).toContain('success');
+    expect(await f.env.DB.prepare('SELECT status,account_id FROM integration_connections WHERE id=?').bind(row.id).first())
+      .toEqual({ status: 'active', account_id: newer.link.account });
+  });
 });

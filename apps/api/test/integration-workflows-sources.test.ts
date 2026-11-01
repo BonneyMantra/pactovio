@@ -14,7 +14,7 @@ const samples: Partial<Record<Adapter, any>> = {
     created: 1793520000, updated: 1793520000, name: 'Meridian laser level', livemode: false, metadata: { sku: 'ML-503' }, default_price: 'price_laser' }] },
   quickbooks: { QueryResponse: { Item: [{ Id: 'laser', Name: 'Meridian laser level', Sku: 'ML-504', UnitPrice: 12.34 }] } },
   xero: { Items: [{ ItemID: 'laser', Code: 'ML-505', Name: 'Meridian laser level', SalesDetails: { UnitPrice: 12.34 } }] },
-  hubspot: { completedAt: time, startedAt: time, status: 'COMPLETE', results: [{ id: 'product-laser', archived: false,
+  hubspot: { results: [{ id: 'product-laser', archived: false,
     createdAt: time, updatedAt: time, properties: { name: 'Meridian laser level', hs_sku: 'ML-506', price: '12.34' } }] },
   salesforce: { totalSize: 1, done: true, records: [{ attributes: { type: 'PricebookEntry' }, Id: '01u000000000001AAA',
     Product2: { Name: 'Meridian laser level', ProductCode: 'ML-507' }, UnitPrice: 12.34, CurrencyIsoCode: 'MYR', SystemModstamp: time }] },

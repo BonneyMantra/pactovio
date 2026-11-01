@@ -49,7 +49,7 @@ export function providerTransport(handler: (method: string, path: string, body: 
 export const resources: Record<Adapter, object> = {
   zoho_inventory: { organization_id: 'org-meridian' }, zoho_books: { organization_id: 'org-meridian' },
   shopify: { scope: 'selected_catalogue' }, square: { scope: 'selected_catalogue' }, stripe: { scope: 'selected_catalogue' },
-  quickbooks: { scope: 'selected_catalogue' }, xero: { tenant_id: 'tenant-meridian' }, hubspot: { product_ids: ['product-laser'] },
+  quickbooks: { scope: 'selected_catalogue' }, xero: { tenant_id: 'tenant-meridian' }, hubspot: { scope: 'selected_catalogue' },
   salesforce: { pricebook_id: '01s000000000001AAA' }, pipedrive: { scope: 'selected_catalogue' },
   googlesheets: { spreadsheet_id: 'sheet-meridian', range: "'Inventory'!A1:F50" }, googledrive: { spreadsheet_id: 'sheet-meridian', range: 'Inventory!A1:F50' },
   excel: { drive_id: 'drive-meridian', item_id: 'file-meridian', table_id: 'LaserInventory' },

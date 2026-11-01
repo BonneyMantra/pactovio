@@ -81,6 +81,14 @@ describe('explicit version-bound read capabilities', () => {
     }
     expect(() => decodePage('hubspot', { results: [], numErrors: 1 }, null)).toThrow();
   });
+  it('never turns explicit more-pages flags into a completed source', () => {
+    expect(decodePage('zoho_inventory', { items: [{ item_id: 'laser' }], page_context: { has_more_page: true } }, null))
+      .toMatchObject({ exhausted: false, next: 2 });
+    expect(() => decodePage('pipedrive', { data: [{ id: 1 }], additional_data: { pagination: { more_items_in_collection: true } } }, null)).toThrow();
+    expect(() => decodePage('pipedrive', { data: [{ id: 1 }], more_items_in_collection: true, next_cursor: 'page-two' }, null)).toThrow();
+    expect(decodePage('pipedrive', { data: [{ id: 1 }], additional_data: { pagination: { more_items_in_collection: true, next_start: 50 } } }, null))
+      .toMatchObject({ exhausted: false, next: 50 });
+  });
   it('verifies the live account identity before every source read and rejects malformed provider values', async () => {
     const connection = await f.createConnection('stripe');
     const row = await f.env.DB.prepare('SELECT * FROM integration_connections WHERE id=?').bind(connection.id).first<any>();

@@ -15,7 +15,7 @@ export const selections = {
   zoho_inventory: selected({ organization_id: ref }), zoho_books: selected({ organization_id: ref }),
   shopify: selected({ scope }), square: selected({ scope }), stripe: selected({ scope }),
   quickbooks: selected({ scope }), xero: selected({ tenant_id: ref }),
-  hubspot: selected({ product_ids: z.array(ref).min(1).max(50).refine(v => new Set(v).size === v.length) }),
+  hubspot: selected({ scope }),
   salesforce: selected({ pricebook_id: z.string().regex(/^[a-zA-Z0-9]{15}(?:[a-zA-Z0-9]{3})?$/) }),
   pipedrive: selected({ scope }),
   googlesheets: selected({ spreadsheet_id: ref, range: a1 }), googledrive: selected({ spreadsheet_id: ref, range: a1 }),
@@ -42,7 +42,7 @@ export function readArguments(adapter: Adapter, resource: unknown, cursor: unkno
     case 'stripe': return { active: true, limit: 50, ...(c ? { starting_after: c } : {}) };
     case 'quickbooks': return { query: `SELECT * FROM Item ORDERBY Id STARTPOSITION ${c ?? 1} MAXRESULTS 50` };
     case 'xero': return { tenant_id: r.tenant_id };
-    case 'hubspot': return { inputs: r.product_ids.map((id: string) => ({ id })), properties: ['name', 'hs_sku', 'price'], archived: false };
+    case 'hubspot': return { limit: 50, properties: ['name', 'hs_sku', 'price'], archived: false, ...(c ? { after: String(c) } : {}) };
     case 'salesforce': return { query: `SELECT Id,Product2.Name,Product2.ProductCode,UnitPrice,CurrencyIsoCode,SystemModstamp FROM PricebookEntry WHERE Pricebook2Id = '${r.pricebook_id}' AND IsActive = true ORDER BY Id LIMIT 50 OFFSET ${c ?? 0}` };
     case 'pipedrive': return { limit: 50, start: c ?? 0 };
     case 'googlesheets': case 'googledrive': return { ...r, major_dimension: 'ROWS', value_render_option: 'UNFORMATTED_VALUE' };

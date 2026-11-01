@@ -59,6 +59,7 @@ routes.post('/toolkits/:slug/connect', async c => {
   const auth = c.get('auth');
   const result = await startConnection(c.env, auth.workspaceId, auth.sessionId!, Slug.parse(c.req.param('slug')),
     c.env.PUBLIC_ORIGIN ?? new URL(c.req.url).origin, ConnectInput.parse(await body(c)));
+  deleteCookie(c, 'pv_oauth', { path: '/api/connectors' });
   setCookie(c, UNIVERSAL_OAUTH_COOKIE, result.state, { httpOnly: true, sameSite: 'Lax', path: '/api', maxAge: 600,
     secure: c.env.ENVIRONMENT !== 'development' || new URL(c.req.url).protocol === 'https:' });
   return c.json({ connection_id: result.connection_id, redirect_url: result.redirect_url, expires_in: result.expires_in });
@@ -78,8 +79,8 @@ routes.get('/imports', async c => {
 });
 routes.get('/imports/:id', async c => { z.object({}).strict().parse(c.req.query()); return c.json(await jobStatus(c.env, c.get('auth').workspaceId, Id.parse(c.req.param('id')))); });
 routes.get('/imports/:id/rows', async c => {
-  const query = z.object({ offset: z.coerce.number().int().min(0).max(500).default(0) }).strict().parse(c.req.query());
-  return c.json(await stagedRows(c.env, c.get('auth').workspaceId, Id.parse(c.req.param('id')), query.offset));
+  const query = z.object({ offset: z.coerce.number().int().min(0).max(1000000).default(0), pending: z.enum(['true', 'false']).default('false') }).strict().parse(c.req.query());
+  return c.json(await stagedRows(c.env, c.get('auth').workspaceId, Id.parse(c.req.param('id')), query.offset, query.pending === 'true'));
 });
 for (const action of ['read', 'resume']) routes.post(`/imports/:id/${action}`, async c => {
   const input = RevisionInput.parse(await body(c));

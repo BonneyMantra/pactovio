@@ -69,8 +69,8 @@ export async function readJob(env: Env, workspace: string, id: string, revision:
   if (job.revision !== revision || job.exhausted || !isAdapter(job.adapter) || !job.connection_id) conflict();
   const connection = await ownConnection(env, workspace, job.connection_id);
   if (connection.account_id !== job.account_id) throw new HttpError(409, 'The source account changed. Start a new import.', 'connection_changed');
-  const total = await env.DB.prepare('SELECT COUNT(*) AS n FROM integration_staging WHERE job_id=?').bind(id).first<{ n: number }>();
-  if (total!.n >= 500) throw new HttpError(409, 'This import reached its 500-record limit. Approve these records and narrow the next selection.', 'selection_limit');
+  const total = await env.DB.prepare('SELECT COUNT(*) AS n FROM integration_staging WHERE job_id=? AND applied=0').bind(id).first<{ n: number }>();
+  if (total!.n >= 500) throw new HttpError(409, 'Review and approve the pending records before reading the next page.', 'selection_limit');
   const token = randomToken(16), now = Date.now();
   const lease = await env.DB.prepare(`UPDATE integration_jobs SET read_token=?,lease_until=?,state='reading',error_code=NULL
     WHERE id=? AND workspace_id=? AND revision=? AND (read_token IS NULL OR lease_until<=?)`)
@@ -102,10 +102,10 @@ export async function readJob(env: Env, workspace: string, id: string, revision:
   }
   return jobStatus(env, workspace, id);
 }
-export async function stagedRows(env: Env, workspace: string, id: string, offset: number) {
+export async function stagedRows(env: Env, workspace: string, id: string, offset: number, pending = false) {
   await ownJob(env, workspace, id);
   const result = await env.DB.prepare(`SELECT external_id,source_version,retrieved_at,record_json,applied FROM integration_staging
-    WHERE job_id=? ORDER BY external_id LIMIT 50 OFFSET ?`).bind(id, offset).all<{ external_id: string; source_version: string | null; retrieved_at: string; record_json: string; applied: number }>();
+    WHERE job_id=? ${pending ? 'AND applied=0' : ''} ORDER BY external_id LIMIT 50 OFFSET ?`).bind(id, offset).all<{ external_id: string; source_version: string | null; retrieved_at: string; record_json: string; applied: number }>();
   return { items: result.results.map(r => ({ external_id: r.external_id, source_version: r.source_version, retrieved_at: r.retrieved_at, record: JSON.parse(r.record_json), applied: !!r.applied })),
     offset, next_offset: result.results.length === 50 ? offset + 50 : null };
 }

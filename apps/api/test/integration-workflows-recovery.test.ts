@@ -71,7 +71,7 @@ describe('persisted checkpoints, permissions and conflict recovery', () => {
         results: [], status: 'COMPLETE', startedAt: '2026-11-01T08:00:00Z', completedAt: '2026-11-01T08:00:00Z', numErrors: 1,
       } };
     });
-    const job = await sourceJob(connection, { product_ids: ['product-laser'] });
+    const job = await sourceJob(connection, { scope: 'selected_catalogue' });
     const first = await f.call(`/imports/${job.id}/read`, { revision: 0 }); expect(first.status).toBe(502); expect(await first.text()).not.toContain('sensitive');
     malformed = false;
     const second = await f.call(`/imports/${job.id}/resume`, { revision: 1 }); expect(second.status).toBe(502);

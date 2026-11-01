@@ -11,6 +11,7 @@ import {
 import { sessionAuth } from '../lib/auth';
 import type { Handler, Register } from '../lib/router';
 import type { AppEnv } from '../lib/types';
+import { integrationVerifier, UNIVERSAL_OAUTH_COOKIE } from './integration-workflows';
 
 const TEST_CAP_PER_HOUR = 20;
 
@@ -30,6 +31,7 @@ export const register: Register = (r) => {
     if (!auth.sessionId || !auth.userId) throw new HttpError(403, 'Connect using a customer browser session', 'forbidden');
     const state = randomToken(32);
     const redirect_url = await connectUrl(env, workspaceId, provider, { origin: env.PUBLIC_ORIGIN ?? new URL(c.req.url).origin, redirectTo: body.redirect_to, sessionId: auth.sessionId, state });
+    deleteCookie(c, UNIVERSAL_OAUTH_COOKIE, { path: '/api' });
     setCookie(c, 'pv_oauth', state, { httpOnly: true, secure: env.ENVIRONMENT !== 'development' || new URL(c.req.url).protocol === 'https:', sameSite: 'Lax', path: '/api/connectors', maxAge: 600 });
     return { redirect_url };
   };
@@ -59,6 +61,7 @@ export const register: Register = (r) => {
 
   // Composio sends the browser back here after OAuth (not part of the typed contract: a redirect, not JSON).
   const callback = async (c: Context<AppEnv>) => {
+    if (getCookie(c, UNIVERSAL_OAUTH_COOKIE)) return integrationVerifier(c);
     const q = z.object({ state: z.string().regex(/^[a-f0-9]{64}$/).optional(), session_uri: z.string().min(1).max(4096).optional(),
       status: z.string().max(80).optional(), connected_account_id: z.string().max(200).optional() }).parse(c.req.query());
     const auth = await sessionAuth(c);
