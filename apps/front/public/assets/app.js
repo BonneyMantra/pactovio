@@ -82,7 +82,7 @@ function renderSide(active) {
       h('div.xs.muted', { style: { display: 'flex', gap: '6px', alignItems: 'center' } }, plan ? h('span.chip.outline.pv-plan', plan) : null, ws?.segment ? `${ws.segment[0].toUpperCase()}${ws.segment.slice(1)}` : '')),
     icon('down', 14));
   side.replaceChildren(
-    h('a.brand', { href: '/' }, h('img', { src: '/assets/brand/mark.svg', alt: '', width: 24, height: 24, style: { display: 'block' } }), 'Pactovio'),
+    h('a.brand', { href: '/' }, h('img', { src: '/assets/brand/lockup.svg', alt: 'Pactovio', width: 134, height: 32 })),
     h('nav.pv-nav', ...NAV.map((n) => n.group
       ? h('div.group', n.group)
       : h(`a.nav-item${active === n.id ? '.on' : ''}`, { href: `#/${n.id}` }, icon(n.icon), n.label, ctx.counts[n.id] ? h('span.count', String(ctx.counts[n.id])) : null))),

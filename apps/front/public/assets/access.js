@@ -9,7 +9,7 @@ export function gateFrame() {
 }
 export function leaveGate() { document.getElementById('access')?.remove(); document.body.classList.remove('pv-gated'); }
 export function gateLayout(root, content, setup = false) {
-  root.replaceChildren(h('header.access-header', h('a.brand', { href: '/' }, h('img', { src: '/assets/brand/mark.svg', alt: '', width: 26, height: 26 }), 'Pactovio'),
+  root.replaceChildren(h('header.access-header', h('a.brand', { href: '/' }, h('img', { src: '/assets/brand/lockup.svg', alt: 'Pactovio', width: 134, height: 32 })),
     h('a.small.ink2', { href: '/#how' }, 'How Pactovio works')),
   h(`div.access-layout${setup ? '.access-setup' : ''}`,
     h('aside.access-story', h('span.access-eyebrow', 'YOUR NEXT OPPORTUNITY, ANSWERED'), h('h1', 'Good work starts\nwith your company.'),
