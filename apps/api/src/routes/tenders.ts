@@ -3,7 +3,7 @@ import {
 } from '@pactovio/contracts';
 import { draftAnswers, fillForm, filledKey, startPackRun } from '@pactovio/engine';
 import { exec, one, rows } from '../lib/db';
-import { MATCH_SELECT, requireTender, splitMatch } from '../lib/tenders';
+import { MATCH_SELECT, requireTender, requirePackAccess, splitMatch } from '../lib/tenders';
 import type { Register } from '../lib/router';
 
 export const register: Register = (r) => {
@@ -22,14 +22,14 @@ export const register: Register = (r) => {
   });
 
   r.on(endpoints.getTender, async ({ db, workspaceId, params }) => {
-    const tender = await requireTender(db, params.id);
+    const tender = await requireTender(db, params.id, workspaceId);
     const match = await one<TenderMatch>(db, 'SELECT * FROM tender_matches WHERE workspace_id = ? AND tender_id = ?', workspaceId, tender.id);
     const counts = await rows<{ status: string; n: number }>(db, 'SELECT status, COUNT(*) AS n FROM requirements WHERE workspace_id = ? AND tender_id = ? GROUP BY status', workspaceId, tender.id);
     const c = (s: string) => counts.find((x) => x.status === s)?.n ?? 0;
     return {
       tender,
       match,
-      documents: await rows<Document>(db, 'SELECT * FROM documents WHERE tender_id = ? ORDER BY filename', tender.id),
+      documents: await rows<Document>(db, 'SELECT * FROM documents WHERE tender_id = ? AND (workspace_id IS NULL OR workspace_id = ?) ORDER BY filename', tender.id, workspaceId),
       latest_run: await one<Run>(db, "SELECT * FROM runs WHERE workspace_id = ? AND subject_type = 'tender' AND subject_id = ? ORDER BY started_at DESC LIMIT 1", workspaceId, tender.id),
       verdicts: await rows<Verdict>(db, 'SELECT * FROM verdicts WHERE workspace_id = ? AND tender_id = ? ORDER BY lot', workspaceId, tender.id),
       requirement_counts: { total: counts.reduce((a, x) => a + x.n, 0), MET: c('MET'), PARTIAL: c('PARTIAL'), GAP: c('GAP'), NEEDS_EVIDENCE: c('NEEDS_EVIDENCE') },
@@ -37,12 +37,12 @@ export const register: Register = (r) => {
   });
 
   r.on(endpoints.startPackRun, async ({ env, auth, workspaceId, params, body }) => {
-    await requireTender(env.DB, params.id);
+    await requirePackAccess(env.DB, params.id, workspaceId);
     return { run_id: await startPackRun(env, { workspaceId, tenderId: params.id, sessionId: auth.sessionId ?? undefined, replay: body.replay }) };
   });
 
   r.on(endpoints.getMatrix, async ({ db, workspaceId, params }) => {
-    await requireTender(db, params.id);
+    await requireTender(db, params.id, workspaceId);
     const requirements = await rows<Requirement>(db, 'SELECT * FROM requirements WHERE workspace_id = ? AND tender_id = ? ORDER BY lot, ref', workspaceId, params.id);
     const verdicts = await rows<Verdict>(db, 'SELECT * FROM verdicts WHERE workspace_id = ? AND tender_id = ? ORDER BY lot', workspaceId, params.id);
     const lots = [...new Set(requirements.map((q) => q.lot).filter((l): l is string => !!l))];
@@ -50,17 +50,17 @@ export const register: Register = (r) => {
   });
 
   r.on(endpoints.getVerdicts, async ({ db, workspaceId, params }) => {
-    await requireTender(db, params.id);
+    await requireTender(db, params.id, workspaceId);
     return { items: await rows<Verdict>(db, 'SELECT * FROM verdicts WHERE workspace_id = ? AND tender_id = ? ORDER BY lot', workspaceId, params.id) };
   });
 
   r.on(endpoints.listAnswers, async ({ db, workspaceId, params }) => {
-    await requireTender(db, params.id);
+    await requireTender(db, params.id, workspaceId);
     return { items: await rows<Answer>(db, 'SELECT * FROM answers WHERE workspace_id = ? AND tender_id = ? ORDER BY lot, question_ref', workspaceId, params.id) };
   });
 
   r.on(endpoints.draftAnswer, async ({ env, workspaceId, params, body }) => {
-    await requireTender(env.DB, params.id);
+    await requirePackAccess(env.DB, params.id, workspaceId);
     const [answer] = await draftAnswers(env, { workspaceId, tenderId: params.id, lot: body.lot, questions: [{ ref: body.question_ref, question: body.question, wordLimit: body.word_limit }] });
     if (!answer) throw new HttpError(500, 'Draft was not created', 'internal');
     return answer;
@@ -80,12 +80,14 @@ export const register: Register = (r) => {
   });
 
   r.on(endpoints.fillForm, async ({ env, db, workspaceId, params, body }) => {
-    await requireTender(db, params.id);
+    await requireTender(db, params.id, workspaceId);
     const ids = body.answer_ids;
     const answers = ids?.length
       ? await rows<Answer>(db, `SELECT * FROM answers WHERE workspace_id = ? AND tender_id = ? AND id IN (${ids.map(() => '?').join(',')})`, workspaceId, params.id, ...ids)
       : await rows<Answer>(db, "SELECT * FROM answers WHERE workspace_id = ? AND tender_id = ? AND status = 'approved'", workspaceId, params.id);
     if (!answers.length) throw new HttpError(400, 'Approve at least one answer before filling the form', 'validation');
+    const doc = await one(db, 'SELECT id FROM documents WHERE id = ? AND tender_id = ? AND (workspace_id IS NULL OR workspace_id = ?)', params.docId, params.id, workspaceId);
+    if (!doc) throw new HttpError(404, 'Document not found', 'not_found');
     const r2_key = await fillForm(env, params.docId, answers);
     return { r2_key, download_url: `/api/tenders/${params.id}/forms/${params.docId}/filled` };
   });

@@ -21,11 +21,11 @@ const TenderListQuery = PageQuery.extend({
 /** The single source of truth for the HTTP surface. API routes, OpenAPI and the typed client all derive from this. */
 export const endpoints = {
   health: ep({ id: 'health', method: 'GET', path: '/health', tag: 'system', summary: 'Liveness and binding check', response: V.Health, status: 'live', lane: 'foundation', public: true }),
-  getSession: ep({ id: 'getSession', method: 'GET', path: '/session', tag: 'workspaces', summary: 'Current judge/app session, its workspace and caps', response: V.SessionInfo, status: 'live', lane: 'foundation' }),
+  getSession: ep({ id: 'getSession', method: 'GET', path: '/session', tag: 'workspaces', summary: 'Current verified customer, private workspace and caps', response: V.SessionInfo, status: 'live', lane: 'foundation' }),
 
-  listWorkspaces: ep({ id: 'listWorkspaces', method: 'GET', path: '/workspaces', tag: 'workspaces', summary: 'List sample workspaces', response: z.object({ items: z.array(Workspace) }), status: 'live', lane: 'foundation' }),
+  listWorkspaces: ep({ id: 'listWorkspaces', method: 'GET', path: '/workspaces', tag: 'workspaces', summary: 'List the authenticated private workspace', response: z.object({ items: z.array(Workspace) }), status: 'live', lane: 'foundation' }),
   getWorkspace: ep({ id: 'getWorkspace', method: 'GET', path: '/workspaces/{id}', tag: 'workspaces', summary: 'Get a workspace', params: id, response: Workspace, status: 'live', lane: 'foundation' }),
-  switchWorkspace: ep({ id: 'switchWorkspace', method: 'POST', path: '/workspaces/switch', tag: 'workspaces', summary: 'Bind this session to another sample workspace', body: z.object({ workspace_id: z.string() }), response: V.SessionInfo, status: 'live', lane: 'foundation' }),
+  switchWorkspace: ep({ id: 'switchWorkspace', method: 'POST', path: '/workspaces/switch', tag: 'workspaces', summary: 'Confirm the current private workspace; other IDs are forbidden', body: z.object({ workspace_id: z.string() }), response: V.SessionInfo, status: 'live', lane: 'foundation' }),
 
   getToday: ep({ id: 'getToday', method: 'GET', path: '/today', tag: 'today', summary: 'Today feed: matches, closing soon, intakes, approvals, expiring certs', response: V.TodayFeed, status: 'sample', lane: 'foundation' }),
 

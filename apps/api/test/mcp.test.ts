@@ -7,6 +7,7 @@ vi.mock('@pactovio/engine', async (orig) => ({ ...(await orig<object>()), startP
 import { agentTools } from '@pactovio/agent';
 import { buildApp } from '../src/app';
 import { sha256Hex } from '../src/lib/db';
+import { customerFixture } from './customer-fixture';
 import { makeEnv } from './helpers';
 
 let env: Env;
@@ -18,6 +19,8 @@ const ctx = { waitUntil: () => undefined, passThroughOnException: () => undefine
 
 beforeAll(async () => {
   ({ env, dispose } = await makeEnv());
+  await customerFixture(env, 'ws_harbour_digital');
+  await customerFixture(env, 'ws_kestrel_sensing');
   await env.DB.prepare('INSERT INTO api_keys (id, workspace_id, prefix, hash, name, created_at) VALUES (?, ?, ?, ?, ?, ?)')
     .bind('key_mcptest', 'ws_harbour_digital', KEY.slice(0, 11), await sha256Hex(KEY), 'mcp test', new Date().toISOString()).run();
   // The Durable Object is not available outside wrangler dev: a stand-in records what MCP forwards to the hub.

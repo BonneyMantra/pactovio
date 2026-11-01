@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Env } from '@pactovio/contracts/env';
 import { docxBytesToPages, ingestEvidenceImpl } from '@pactovio/engine';
 import { buildApp } from '../src/app';
+import { customerFixture } from './customer-fixture';
 import { makeEnv } from './helpers';
 
 const TEAGASC = 'tnd_sample_teagasc_p4941';
@@ -12,7 +13,7 @@ let dispose: () => Promise<void>;
 const { app } = buildApp();
 const ctx = { waitUntil: () => undefined, passThroughOnException: () => undefined } as unknown as ExecutionContext;
 let cookie = '';
-const call = (path: string, init: RequestInit = {}) => app.fetch(new Request(`http://localhost${path}`, { ...init, headers: { ...(init.headers as Record<string, string>), cookie } }), env, ctx);
+const call = (path: string, init: RequestInit = {}) => app.fetch(new Request(`http://localhost${path}`, { ...init, headers: { ...(init.headers as Record<string, string>), cookie, origin: 'http://localhost' } }), env, ctx);
 const json = (path: string, method: string, body: unknown) => call(path, { method, headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
 
 const W = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"';
@@ -24,7 +25,7 @@ const form = () => zipSync({
 
 beforeAll(async () => {
   ({ env, dispose } = await makeEnv());
-  cookie = (await call('/api/today')).headers.get('set-cookie')!.split(';')[0]!;
+  cookie = (await customerFixture(env, 'ws_harbour_digital')).cookie;
   const r2 = (await env.DB.prepare('SELECT r2_key FROM documents WHERE id = ?').bind(TRD1).first<{ r2_key: string }>())!.r2_key;
   await env.FILES.put(r2, form());
   await env.DB.prepare("UPDATE answers SET status = 'draft', approved_at = NULL WHERE id LIKE 'ans_sample%'").run(); // seed ships one approved sample answer
@@ -61,10 +62,10 @@ describe('form filling through the API', () => {
   });
 
   it('a form from another workspace is not downloadable (workspace isolation)', async () => {
-    const sw = await json('/api/workspaces/switch', 'POST', { workspace_id: 'ws_kestrel_sensing' });
-    expect(sw.status).toBe(200);
+    const previous = cookie;
+    cookie = (await customerFixture(env, 'ws_kestrel_sensing')).cookie;
     expect((await call(`/api/tenders/${TEAGASC}/forms/${TRD1}/filled`)).status).toBe(404);
-    await json('/api/workspaces/switch', 'POST', { workspace_id: 'ws_harbour_digital' });
+    cookie = previous;
   });
 });
 

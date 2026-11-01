@@ -24,6 +24,8 @@ import * as ingest from './routes/ingest';
 import { inboundWebhooks } from './routes/inbound-webhooks';
 import { mcpRoutes } from './routes/mcp';
 import { devRoutes } from './routes/dev';
+import { customerAuthRoutes } from './routes/customer-auth';
+import { onboardingRoutes } from './routes/onboarding';
 
 /** Add a route module here. Each module exports `register(r)` and is mounted on both /api (session) and /v1 (API key). */
 export const modules: Register[] = [
@@ -37,7 +39,11 @@ export function buildApp() {
   const v1 = new Router('apikey');
   for (const reg of modules) { reg(api); reg(v1); }
 
+  app.route('/api/auth', customerAuthRoutes);
+  app.route('/api/onboarding', onboardingRoutes);
+  app.use('/api/*', async (c, next) => { c.header('cache-control', 'no-store'); await next(); });
   app.route('/api', api.app);
+  app.use('/v1/*', async (c, next) => { c.header('cache-control', 'no-store'); await next(); });
   app.route('/v1', v1.app);
   app.get('/v1/openapi.json', (c) => c.json(buildOpenApi({ servers: [new URL(c.req.url).origin] })));
   app.route('/', ics.icsRoutes);

@@ -1,7 +1,7 @@
 import { reserveAgentTurn } from '@pactovio/billing';
 import { endpoints, type AgentMessage, type AgentThread, type AgentTurnResult, type PendingAction } from '@pactovio/contracts';
 import { hubFetch, hubJson } from '../do/client';
-import { sessionAuth } from '../lib/auth';
+import { apiKeyAuth, sessionAuth } from '../lib/auth';
 import { errorResponse, type Register, type Router } from '../lib/router';
 import { mountActionLinks, mountDevEmit } from './agent-links';
 
@@ -39,13 +39,16 @@ function mountSocket(r: Router) {
       if (c.req.header('upgrade')?.toLowerCase() !== 'websocket') {
         return c.json({ error: 'Expected a WebSocket upgrade', code: 'upgrade_required' }, 426);
       }
-      const auth = await sessionAuth(c);
+      const auth = r.mode === 'session' ? await sessionAuth(c) : await apiKeyAuth(c);
       const stub = c.env.AGENT.get(c.env.AGENT.idFromName(auth.workspaceId));
       const url = new URL(c.req.url);
       url.pathname = '/ws';
       url.searchParams.set('workspace', auth.workspaceId);
       url.searchParams.set('session', auth.sessionId ?? '');
-      return stub.fetch(new Request(url, c.req.raw));
+      const headers = new Headers(c.req.raw.headers);
+      headers.set('x-pv-workspace', auth.workspaceId);
+      headers.set('x-pv-session', auth.sessionId ?? '');
+      return stub.fetch(new Request(url, { method: 'GET', headers }));
     } catch (e) {
       return errorResponse(c, e);
     }

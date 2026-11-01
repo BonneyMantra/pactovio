@@ -5,6 +5,8 @@ import { providerSpec } from './catalog';
 import { Composio } from './composio';
 import { PROVIDER_ACTIONS } from './providers';
 import { composioUserId, getConnector, isLive, saveConfig, type ConnectorRow } from './store';
+import { requireOwnedFile } from './file-access';
+import { workspaceUserId } from './identity';
 import { mimeFor } from './util';
 
 export interface Deps { fetch?: typeof fetch; now?: () => Date }
@@ -57,6 +59,9 @@ export async function runAction(
   const row = await getConnector(env, workspaceId, provider);
   if (!isLive(row)) return { ok: false, output: { error: `${provider} is not connected`, code: 'not_connected' } };
   try {
+    const expected = await workspaceUserId(env, workspaceId);
+    if (composioUserId(row) !== expected) throw new HttpError(403, 'Connection does not belong to this workspace', 'forbidden');
+    if (input.r2_key) await requireOwnedFile(env, workspaceId, String(input.r2_key));
     const ctx = makeCtx(env, row, deps, { file: await loadFile(env, input) });
     const out: ActionOutput = await def.run(input, ctx);
     return { ok: true, output: out };

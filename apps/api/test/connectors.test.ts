@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Env } from '@pactovio/contracts/env';
 import { signComposioWebhook } from '@pactovio/connectors';
 import { buildApp } from '../src/app';
+import { customerFixture } from './customer-fixture';
 import { makeEnv } from './helpers';
 
 let env: Env;
@@ -10,14 +11,13 @@ let cookie = '';
 const started: Record<string, any>[] = []; // eslint-disable-line @typescript-eslint/no-explicit-any
 const { app } = buildApp();
 const ctx = { waitUntil: () => undefined, passThroughOnException: () => undefined } as unknown as ExecutionContext;
-const call = (path: string, init: RequestInit = {}, e: Env = env) => app.fetch(new Request(`http://localhost${path}`, { ...init, headers: { ...(init.headers as Record<string, string>), cookie } }), e, ctx);
+const call = (path: string, init: RequestInit = {}, e: Env = env) => app.fetch(new Request(`http://localhost${path}`, { ...init, headers: { cookie, origin: 'http://localhost', ...(init.headers as Record<string, string>) } }), e, ctx);
 const json = (body: unknown): RequestInit => ({ method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
 
 beforeAll(async () => {
   ({ env, dispose } = await makeEnv());
   env = { ...env, INTAKE: { create: async (o: Record<string, unknown>) => { started.push(o); return {} as never; } } as never } as Env;
-  cookie = (await call('/api/health')).headers.get('set-cookie')?.split(';')[0] ?? '';
-  cookie = (await call('/api/session')).headers.get('set-cookie')?.split(';')[0] ?? cookie;
+  cookie = (await customerFixture(env, 'ws_harbour_digital')).cookie;
 }, 60_000);
 afterAll(async () => dispose?.());
 
@@ -51,14 +51,14 @@ describe('connectors API', () => {
   it('the public demo cannot disconnect or replace a live shared connection', async () => {
     await env.DB.prepare("INSERT INTO connectors (id, workspace_id, provider, status, external_account_id, meta_json, connected_at) VALUES ('cnx_live', 'ws_harbour_digital', 'dropbox', 'connected', 'ca_x', '{}', '2026-10-30T00:00:00Z')").run();
     const prod = { ...env, ENVIRONMENT: 'production' } as Env;
-    expect((await call('/api/connectors/dropbox/disconnect', json({}), prod)).status).toBe(403);
-    expect((await call('/api/connectors/dropbox/connect', json({}), prod)).status).toBe(403);
+    expect((await call('/api/connectors/dropbox/disconnect', { ...json({}), headers: { cookie: 'pv_s=legacy' } }, prod)).status).toBe(401);
+    expect((await call('/api/connectors/dropbox/connect', { ...json({}), headers: { cookie: 'pv_s=legacy' } }, prod)).status).toBe(401);
   });
 
   it('GET /api/connectors/callback sends the browser back with status=failed for an unknown connection attempt', async () => {
     const res = await call('/api/connectors/callback?w=ws_harbour_digital&p=slack&status=success&connected_account_id=ca_forged');
     expect(res.status).toBe(302);
-    expect(res.headers.get('location')).toBe('/?connector=slack&status=failed');
+    expect(res.headers.get('location')).toBe('/app#/connections?status=failed');
   });
 });
 

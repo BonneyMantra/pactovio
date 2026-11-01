@@ -2,6 +2,7 @@ import type { Env } from '@pactovio/contracts/env';
 
 export interface Auth {
   workspaceId: string;
+  userId?: string;
   /** judge/app session id; null for API-key calls */
   sessionId: string | null;
   via: 'session' | 'apikey' | 'public';

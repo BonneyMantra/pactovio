@@ -1,4 +1,4 @@
-import { invokeTool } from '@pactovio/agent';
+import { invokeTool } from '../lib/customer-tools';
 import type { AgentMessage, PendingAction } from '@pactovio/contracts';
 import { refuse, sessionKeyOf, type HubDeps } from './deps';
 import { INBOX_THREAD, toPending } from './store';

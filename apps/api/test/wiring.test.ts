@@ -3,6 +3,7 @@ import { balance, grantCredits } from '@pactovio/billing';
 import type { Env } from '@pactovio/contracts/env';
 import { startPackRunImpl } from '../../../packages/engine/src/start';
 import { buildApp } from '../src/app';
+import { customerFixture } from './customer-fixture';
 import { makeEnv } from './helpers';
 
 let env: Env;
@@ -65,7 +66,7 @@ describe('agent message rate limit at the route', () => {
     const statuses: number[] = [];
     for (let i = 0; i < 11; i++) {
       // the Durable Object is not available under the test proxy, so the first ten pass the limiter and fail at the hub (not 429)
-      const res = await app.fetch(new Request('http://localhost/api/agent/messages', { method: 'POST', headers: { cookie, 'content-type': 'application/json' }, body: '{"content":"hello"}' }), env, ctx);
+      const res = await app.fetch(new Request('http://localhost/api/agent/messages', { method: 'POST', headers: { origin: 'http://localhost', cookie, 'content-type': 'application/json' }, body: '{"content":"hello"}' }), env, ctx);
       statuses.push(res.status);
     }
     expect(statuses.slice(0, 10).every((s) => s !== 429)).toBe(true);
@@ -74,7 +75,5 @@ describe('agent message rate limit at the route', () => {
 });
 
 async function sessionCookie(): Promise<string> {
-  const res = await app.fetch(new Request('http://localhost/api/workspaces'), env, ctx);
-  const set = res.headers.get('set-cookie') ?? '';
-  return set.split(';')[0] ?? '';
+  return (await customerFixture(env, 'ws_harbour_digital')).cookie;
 }

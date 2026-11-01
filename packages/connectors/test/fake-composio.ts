@@ -7,7 +7,7 @@ type Handler = (args: Record<string, any>) => unknown; // eslint-disable-line @t
  * A Composio REST v3.1 stand-in for unit tests. Tool handlers return the `data` of a successful execution (response shapes follow
  * Composio's documented `response_data` wrapping and the providers' own API formats). Nothing here talks to the network.
  */
-export function fakeComposio(handlers: Record<string, Handler> = {}, opts: { failTools?: Record<string, string>; accounts?: Record<string, unknown>[]; proxy?: (req: Record<string, any>) => { status: number; data: unknown } } = {}) { // eslint-disable-line @typescript-eslint/no-explicit-any
+export function fakeComposio(handlers: Record<string, Handler> = {}, opts: { verifiedAccount?: { connected_account_id: string; toolkit_slug: string }; failTools?: Record<string, string>; accounts?: Record<string, unknown>[]; proxy?: (req: Record<string, any>) => { status: number; data: unknown } } = {}) { // eslint-disable-line @typescript-eslint/no-explicit-any
   const calls: Call[] = [];
   const log: string[] = [];
   const staged: { filename: string; bytes: number }[] = [];
@@ -31,6 +31,7 @@ export function fakeComposio(handlers: Record<string, Handler> = {}, opts: { fai
     if (method === 'GET' && path === '/auth_configs') return json({ items: [{ id: 'ac_other', name: 'other-product-xero', status: 'ENABLED' }] });
     if (method === 'POST' && path === '/auth_configs') return json({ toolkit: { slug: body!.toolkit.slug }, auth_config: { id: `ac_${body!.toolkit.slug}`, is_composio_managed: true } }, 201);
     if (method === 'POST' && path === '/connected_accounts/link') return json({ link_token: 'lk_1', redirect_url: 'https://connect.composio.dev/link/lk_1', expires_at: '2026-10-30T05:00:00Z', connected_account_id: `ca_new_${body!.auth_config_id}` });
+    if (method === 'POST' && path === '/connected_accounts/complete_auth') return json(opts.verifiedAccount ?? {}, opts.verifiedAccount ? 200 : 400);
     if (method === 'GET' && path === '/connected_accounts') return json({ items: opts.accounts ?? [], next_cursor: null });
     if (method === 'GET' && path.startsWith('/connected_accounts/')) { const id = path.split('/').pop(); const a = (opts.accounts ?? []).find((x) => x.id === id) ?? { id, status: 'INITIATED', toolkit: { slug: 'slack' }, user_id: 'pactovio-demo' }; return json(a); }
     if (method === 'DELETE' && path.startsWith('/connected_accounts/')) return json({ success: true });

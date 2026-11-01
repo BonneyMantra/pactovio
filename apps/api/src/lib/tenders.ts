@@ -16,8 +16,15 @@ export function splitMatch(row: Record<string, unknown>): { tender: Tender; matc
   return { tender: fromRow<Tender>(t), match: fromRow<TenderMatch>(m) };
 }
 
-export async function requireTender(db: D1Database, id: string): Promise<Tender> {
-  const t = await one<Tender>(db, 'SELECT * FROM tenders WHERE id = ?', id);
+export async function requireTender(db: D1Database, id: string, workspaceId: string): Promise<Tender> {
+  const t = await one<Tender>(db, `SELECT * FROM tenders t WHERE id = ? AND (source != 'upload' OR EXISTS (SELECT 1 FROM intakes i WHERE i.tender_id = t.id AND i.workspace_id = ?))`, id, workspaceId);
   if (!t) throw new HttpError(404, 'Tender not found', 'not_found');
   return t;
+}
+
+/** Engine pack readers are global by tender: refuse foreign private attachments before invoking them. */
+export async function requirePackAccess(db: D1Database, id: string, workspaceId: string): Promise<void> {
+  await requireTender(db, id, workspaceId);
+  const foreign = await one(db, 'SELECT id FROM documents WHERE tender_id = ? AND workspace_id IS NOT NULL AND workspace_id != ? LIMIT 1', id, workspaceId);
+  if (foreign) throw new HttpError(404, 'Pack not available to this workspace', 'not_found');
 }

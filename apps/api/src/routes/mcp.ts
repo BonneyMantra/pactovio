@@ -1,6 +1,7 @@
+import { invokeTool } from '../lib/customer-tools';
 import { Hono } from 'hono';
 import { z } from 'zod';
-import { agentTools, getTool, invokeTool, toolJsonSchema } from '@pactovio/agent';
+import { agentTools, getTool, toolJsonSchema } from '@pactovio/agent';
 import { HttpError, type PendingAction } from '@pactovio/contracts';
 import { hubJson } from '../do/client';
 import { clipJson } from '../do/summarize';
@@ -24,7 +25,7 @@ mcpRoutes.post('/mcp', async (c) => {
     auth = await apiKeyAuth(c);
   } catch (e) {
     const status = e instanceof HttpError ? e.status : 401;
-    return c.json({ error: e instanceof Error ? e.message : 'Unauthorized', code: 'unauthorized' }, status, { 'www-authenticate': 'Bearer realm="pactovio"' });
+    return c.json({ error: e instanceof HttpError ? e.message : 'Authentication unavailable', code: 'unauthorized' }, status, { 'www-authenticate': 'Bearer realm="pactovio"' });
   }
   let body: unknown;
   try { body = await c.req.json(); } catch { return c.json(err(null, -32700, 'Parse error'), 400); }
