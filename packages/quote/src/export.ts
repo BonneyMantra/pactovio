@@ -1,7 +1,7 @@
 import { strToU8, zipSync } from 'fflate';
 import type { Quote } from '@pactovio/contracts';
 
-export interface QuoteDoc { quote: Quote; seller: string; customer: string; tax_label: string; tax_bp: number; subject: string | null }
+export interface QuoteDoc { quote: Quote; seller: string; customer: string; tax_label: string; tax_bp: number; subject: string | null; sample?: boolean }
 
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
@@ -30,8 +30,8 @@ export function quoteDocx(d: QuoteDoc): Uint8Array {
     p('QUOTATION', { b: true, sz: 20 }), p(`${d.seller}  |  Quote ${q.id}`), p(`Prepared for: ${d.customer}`),
     ...(d.subject ? [p(`Subject: ${d.subject}`)] : []), p(`Valid until: ${q.valid_until?.slice(0, 10) ?? 'n/a'}   Currency: ${q.currency}`), p(' '),
     tbl([head, ...lines, tot('Subtotal', q.subtotal_minor), tot('Volume discount', -q.discount_minor), tot(d.tax_label, q.tax_minor), tot('Total', q.total_minor, true)]),
-    p(' '), p('Terms: valid for 30 days from issue. Delivery 8 to 12 weeks from order. Payment 30 days net on approved credit. Prices exclude taxes shown separately.', { sz: 9 }),
-    p('Sample company (fictional): sample data created for demonstration.', { sz: 8 }),
+    p(' '), p('Commercial terms, delivery dates and payment terms require supplier confirmation. Taxes are shown separately.', { sz: 9 }),
+    ...(d.sample ? [p('Sample company (fictional): sample data created for demonstration.', { sz: 8 })] : []),
   ].join('');
   return zipSync({
     '[Content_Types].xml': strToU8('<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>'),
