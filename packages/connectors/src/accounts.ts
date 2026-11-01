@@ -4,7 +4,7 @@ import { PROVIDERS, providerSpec, type ProviderSpec } from './catalog';
 import type { ConnectedAccountInfo } from './composio';
 import { composioFor, makeCtx, type Deps } from './runtime';
 import { PROVIDER_ACTIONS } from './providers';
-import { connectorsForAccount, effectiveRules, getConnector, isLive, isSample, listConnectors, saveConnector, type ConnectorRow } from './store';
+import { connectorsForAccount, effectiveRules, getConnector, isLive, isSample, listConnectors, saveConnector, settlePendingConnector, type ConnectorRow } from './store';
 
 import { workspaceUserId, tokenHash } from './identity';
 import { completeOAuth, requireOAuthSession, saveOAuthState, safeReturn, stateToken } from './oauth';
@@ -68,19 +68,23 @@ export async function connectUrl(
 }
 
 /** Mark a provider connected (and its shared-account sibling), then register the mailbox trigger for email providers. */
-export async function markConnected(env: Env, workspaceId: string, provider: string, acct: { id: string; label: string | null }, deps: Deps = {}, owner = false): Promise<void> {
+export async function markConnected(env: Env, workspaceId: string, provider: string, acct: { id: string; label: string | null }, deps: Deps = {}, owner = false, stateHash?: string): Promise<boolean> {
   const cur = await getConnector(env, workspaceId, provider);
   // `owner` marks the workspace that completed the connect flow; sync never shares an owned account with other workspaces.
   const meta = { ...(cur && !isSample(cur) ? cur.meta : {}), account_label: acct.label, composio_user_id: await workspaceUserId(env, workspaceId), ...(owner ? { owner: true } : {}) };
   delete (meta as Record<string, unknown>).pending;
   delete (meta as Record<string, unknown>).sample;
-  await saveConnector(env, workspaceId, provider, { status: 'connected', external_account_id: acct.id, connected_at: new Date().toISOString(), meta });
+  if (stateHash) {
+    if (!await settlePendingConnector(env, workspaceId, provider, stateHash, { status: 'connected', account: acct.id,
+      meta: { account_label: acct.label, composio_user_id: meta.composio_user_id, owner: true, last_error: null } })) return false;
+  } else await saveConnector(env, workspaceId, provider, { status: 'connected', external_account_id: acct.id, connected_at: new Date().toISOString(), meta });
   const sibling = PROVIDERS.find((p) => p.sharesAccountWith === provider);
   if (sibling) {
     const s = await getConnector(env, workspaceId, sibling.provider);
     await saveConnector(env, workspaceId, sibling.provider, { status: 'connected', external_account_id: acct.id, connected_at: new Date().toISOString(), meta: { ...(s && !isSample(s) ? s.meta : {}), account_label: acct.label, composio_user_id: meta.composio_user_id, ...(owner ? { owner: true } : {}) } });
   }
   if (provider === 'gmail' || provider === 'outlook') await watchInbox(env, workspaceId, provider, deps);
+  return true;
 }
 
 /** Register the new-mail trigger for this workspace (best effort; the connect flow must not fail on it). */
@@ -104,7 +108,7 @@ export async function watchInbox(env: Env, workspaceId: string, provider: 'gmail
 export async function completeCallback(
   env: Env, q: { session_uri?: string; state?: string; w?: string; p?: string; status?: string; connected_account_id?: string }, deps: Deps = {}, sessionId?: string,
 ): Promise<{ redirect: string; ok: boolean }> {
-  return completeOAuth(env, q, deps, sessionId, (workspace, provider, acct) => markConnected(env, workspace, provider, acct, deps, true));
+  return completeOAuth(env, q, deps, sessionId, (workspace, provider, acct, hash) => markConnected(env, workspace, provider, acct, deps, true, hash));
 }
 
 /**

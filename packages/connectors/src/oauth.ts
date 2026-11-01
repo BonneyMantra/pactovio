@@ -2,7 +2,7 @@ import { HttpError } from '@pactovio/contracts';
 import type { Env } from '@pactovio/contracts/env';
 import { providerSpec } from './catalog';
 import { composioFor, type Deps } from './runtime';
-import { getConnector, saveConnector } from './store';
+import { getConnector, settlePendingConnector } from './store';
 import { safeReturn, stateToken, tokenHash, workspaceUserId } from './identity';
 
 export async function requireOAuthSession(env: Env, workspace: string, session: string): Promise<void> {
@@ -25,7 +25,7 @@ export { stateToken, safeReturn };
 /** One atomic consume, bound to the initiating session; callback query IDs never confer authority. */
 export async function completeOAuth(
   env: Env, q: { session_uri?: string; state?: string; connected_account_id?: string; status?: string }, deps: Deps, session: string | undefined,
-  connected: (workspace: string, provider: string, acct: { id: string; label: string | null }) => Promise<void>,
+  connected: (workspace: string, provider: string, acct: { id: string; label: string | null }, stateHash: string) => Promise<boolean>,
 ): Promise<{ redirect: string; ok: boolean }> {
   const failed = { redirect: '/app#/connections?status=failed', ok: false };
   if (!session || !q.state || !/^[a-f0-9]{64}$/.test(q.state)) return failed;
@@ -51,12 +51,12 @@ export async function completeOAuth(
     if ((q.connected_account_id && q.connected_account_id !== state.account_id) || acct.id !== state.account_id || acct.status !== 'ACTIVE'
       || acct.toolkit !== providerSpec(state.provider)?.toolkit || acct.userId !== state.user_id
       || state.user_id !== await workspaceUserId(env, state.workspace_id)) throw new Error('account mismatch');
-    await connected(state.workspace_id, state.provider, { id: acct.id, label: acct.label });
+    if (!await connected(state.workspace_id, state.provider, { id: acct.id, label: acct.label }, await tokenHash(q.state))) return done(false);
     await env.CACHE.delete(`cx:sync:${state.workspace_id}`).catch(() => undefined);
     return done(true);
   } catch {
-    await saveConnector(env, state.workspace_id, state.provider, { status: 'error', external_account_id: null, connected_at: null,
-      meta: { ...row.meta, pending: undefined, last_error: 'Connection could not be verified; reconnect to try again' } });
+    await settlePendingConnector(env, state.workspace_id, state.provider, await tokenHash(q.state), { status: 'error', account: null,
+      meta: { last_error: 'Connection could not be verified; reconnect to try again' } });
     return done(false);
   }
 }

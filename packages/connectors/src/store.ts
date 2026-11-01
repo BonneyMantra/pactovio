@@ -66,6 +66,22 @@ export async function saveConfig(env: Env, workspaceId: string, provider: string
   await saveConnector(env, workspaceId, provider, { meta: { ...cur.meta, config } });
 }
 
+/** Settle only this still-current OAuth attempt; provider awaits may have allowed a newer attempt. */
+export async function settlePendingConnector(env: Env, workspace: string, provider: string, stateHash: string,
+  patch: { status: 'connected' | 'error'; account: string | null; meta: Record<string, unknown> }): Promise<boolean> {
+  const result = await env.DB.prepare(`UPDATE connectors SET status = ?, external_account_id = ?, connected_at = ?,
+    meta_json = json_patch(json_remove(meta_json, '$.pending', '$.sample'), ?)
+    WHERE workspace_id = ? AND provider = ? AND json_extract(meta_json, '$.pending.state_hash') = ?
+    AND (? = 'error' OR EXISTS (
+      SELECT 1 FROM connector_oauth_states o JOIN customer_sessions s ON s.id = o.session_id
+      JOIN workspace_members m ON m.user_id = s.user_id AND m.workspace_id = s.workspace_id
+      WHERE o.state_hash = ? AND o.workspace_id = connectors.workspace_id AND s.workspace_id = o.workspace_id
+      AND s.revoked_at IS NULL AND s.expires_at > ?))`)
+    .bind(patch.status, patch.account, patch.status === 'connected' ? new Date().toISOString() : null,
+      JSON.stringify(patch.meta), workspace, provider, stateHash, patch.status, stateHash, Date.now()).run();
+  return (result.meta.changes ?? 0) > 0;
+}
+
 const ruleKey = (r: Pick<ConnectorRule, 'event' | 'action'>) => `${r.event}:${r.action}`;
 
 /** Defaults merged with the workspace's overrides (matched by event + action). */
