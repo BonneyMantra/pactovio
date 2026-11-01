@@ -72,6 +72,11 @@ export async function integrationCatalog(env: Env, query: z.infer<typeof Catalog
   const categories = [...new Set(items.flatMap(i => i.categories))].sort((a, b) => a.localeCompare(b));
   const matching = items.filter(i => (!category || i.categories.some(c => c.toLocaleLowerCase() === category))
     && (!search || `${i.name} ${i.slug} ${i.description}`.toLocaleLowerCase().includes(search)));
+  if (search) {
+    const rank = (item: typeof items[number]) => item.name.toLocaleLowerCase() === search || item.slug.toLocaleLowerCase() === search ? 0
+      : item.name.toLocaleLowerCase().startsWith(search) ? 1 : item.name.toLocaleLowerCase().includes(search) ? 2 : 3;
+    matching.sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name));
+  }
   return { items: matching.slice(query.offset, query.offset + query.limit), total: matching.length,
     catalog_total: items.length, categories, retrieved_at: value.retrieved_at,
     next_offset: query.offset + query.limit < matching.length ? query.offset + query.limit : null };

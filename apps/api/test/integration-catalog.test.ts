@@ -60,6 +60,13 @@ describe('authenticated integration discovery', () => {
     expect(await response.json()).toEqual({ error: 'Could not load available integrations. Please try again.', code: 'integration_unavailable' });
     expect(await env.CACHE.get(KEY)).toBeNull();
   });
+  it('ranks the requested app before other services that only mention it in descriptions', async () => {
+    vi.spyOn(Composio.prototype, 'request').mockResolvedValue({ items: [toolkit('dynapictures', {
+      name: 'Dynapictures', meta: { description: 'Automate images with Google Sheets', categories: [] },
+    }), toolkit('googlesheets', { name: 'Google Sheets' })], next_cursor: null });
+    const result = await (await call('?search=google%20sheets')).json() as { items: { slug: string }[] };
+    expect(result.items.map(i => i.slug)).toEqual(['googlesheets', 'dynapictures']);
+  });
   it('rejects malformed pages and repeated pagination rather than caching partial success', async () => {
     const request = vi.spyOn(Composio.prototype, 'request').mockResolvedValue({ items: [toolkit('hubspot')], next_cursor: 'same-page' });
     expect((await call()).status).toBe(503); expect(request).toHaveBeenCalledTimes(2);
