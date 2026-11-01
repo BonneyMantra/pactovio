@@ -8,6 +8,7 @@ import {
   ConnectorCatalogItem,
 } from './entities-ops';
 import * as V from './views';
+import { ProductInput } from './catalogue';
 
 const id = z.object({ id: z.string() });
 const empty = z.object({ ok: z.boolean() });
@@ -59,6 +60,8 @@ export const endpoints = {
   matchDesignRequest: ep({ id: 'matchDesignRequest', method: 'POST', path: '/design-requests/{id}/match', tag: 'design', summary: 'Extract requirements and match against the product catalogue', params: id, response: DesignRequest, status: 'live', lane: 'quote' }),
   quoteDesignRequest: ep({ id: 'quoteDesignRequest', method: 'POST', path: '/design-requests/{id}/quote', tag: 'design', summary: 'Create a priced quote from the matches', params: id, body: V.QuoteFromDesignBody, response: Quote, status: 'live', lane: 'quote' }),
   listProducts: ep({ id: 'listProducts', method: 'GET', path: '/products', tag: 'design', summary: 'Product catalogue', response: z.object({ items: z.array(Product) }), status: 'sample', lane: 'quote' }),
+  createProduct: ep({ id: 'createProduct', method: 'POST', path: '/products', tag: 'design', summary: 'Add a customer product and price', body: ProductInput, response: Product, status: 'live', lane: 'quote' }),
+  updateProduct: ep({ id: 'updateProduct', method: 'PUT', path: '/products/{id}', tag: 'design', summary: 'Update an owned product and price', params: id, body: ProductInput, response: Product, status: 'live', lane: 'quote' }),
 
   listQuotes: ep({ id: 'listQuotes', method: 'GET', path: '/quotes', tag: 'quotes', summary: 'Quotes', response: z.object({ items: z.array(Quote) }), status: 'sample', lane: 'quote' }),
   getQuote: ep({ id: 'getQuote', method: 'GET', path: '/quotes/{id}', tag: 'quotes', summary: 'One quote', params: id, response: Quote, status: 'sample', lane: 'quote' }),

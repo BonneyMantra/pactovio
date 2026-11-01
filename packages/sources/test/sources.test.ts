@@ -129,7 +129,14 @@ describe('eTenders anonymous pack download (recorded 3-step flow)', () => {
 describe('nightly scan (idempotent)', () => {
   let env: Env;
   let dispose: () => Promise<void>;
-  beforeAll(async () => ({ env, dispose } = await makeEnv()), 60_000);
+  beforeAll(async () => {
+    ({ env, dispose } = await makeEnv());
+    const { customerFixture } = await import('../../../apps/api/test/customer-fixture');
+    for (const workspace of ['ws_harbour_digital', 'ws_kestrel_sensing']) {
+      await customerFixture(env, workspace);
+      await env.DB.prepare('UPDATE company_onboarding SET completed_at = ? WHERE workspace_id = ?').bind(new Date().toISOString(), workspace).run();
+    }
+  }, 60_000);
   afterAll(async () => dispose?.());
 
   it('upserts notices, triages once, writes matches and intakes, emits once, and a rerun changes nothing', async () => {

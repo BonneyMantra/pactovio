@@ -5,6 +5,7 @@ import type { Env } from '@pactovio/contracts/env';
 import { TodayFeed } from '@pactovio/contracts';
 import { buildApp } from '../../../apps/api/src/app';
 import { makeEnv } from '../../../apps/api/test/helpers';
+import { customerFixture } from '../../../apps/api/test/customer-fixture';
 import { runNightlyScan } from '../src';
 
 const fx = (n: string) => readFileSync(resolve(__dirname, 'fixtures', n), 'utf8');
@@ -24,7 +25,8 @@ describe('GET /api/today after a scan', () => {
       triage: async (_w, t) => ({ fit_score: scores[t.source_ref.split('-')[0]!] ?? 77, reason: `scored ${t.source_ref}`, door: 'tender' }),
     });
     const { app } = buildApp();
-    const res = await app.fetch(new Request('http://localhost/api/today'), env, ctx);
+    const customer = await customerFixture(env, 'ws_harbour_digital');
+    const res = await app.fetch(new Request('http://localhost/api/today', { headers: { cookie: customer.cookie } }), env, ctx);
     expect(res.status).toBe(200);
     const feed = TodayFeed.parse(await res.json());
     const fits = feed.top_matches.map((m) => m.match!.fit_score);

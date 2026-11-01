@@ -1,14 +1,5 @@
-import { z } from 'zod';
-import { fromRow, HttpError, newId, type Product } from '@pactovio/contracts';
-
-export const ProductInput = z.object({
-  sku: z.string().trim().min(1).max(64).transform((v) => v.toUpperCase()),
-  name: z.string().trim().min(2).max(160),
-  family: z.string().trim().max(100).nullable().optional(),
-  unit: z.string().trim().min(1).max(40).default('each'),
-  unit_price_minor: z.number().int().nonnegative().max(1_000_000_000_000),
-  currency: z.string().trim().regex(/^[A-Za-z]{3}$/).transform((v) => v.toUpperCase()),
-}).strict();
+import { fromRow, HttpError, newId, ProductInput, type Product } from '@pactovio/contracts';
+export { ProductInput };
 
 async function requireCustomer(db: D1Database, workspaceId: string): Promise<void> {
   const ws = await db.prepare('SELECT id FROM workspaces WHERE id = ? AND sample = 0').bind(workspaceId).first();

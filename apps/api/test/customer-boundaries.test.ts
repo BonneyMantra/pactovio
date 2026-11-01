@@ -10,7 +10,8 @@ import { makeEnv } from './helpers';
 let env: Env, dispose: () => Promise<void>;
 let a: Awaited<ReturnType<typeof customerFixture>>, b: typeof a;
 const { app } = buildApp();
-const ctx = { waitUntil: () => undefined, passThroughOnException: () => undefined } as unknown as ExecutionContext;
+const background: Promise<unknown>[] = [];
+const ctx = { waitUntil: (work: Promise<unknown>) => { background.push(work); }, passThroughOnException: () => undefined } as unknown as ExecutionContext;
 const call = (path: string, method = 'GET', body?: unknown, cookie = a.cookie) => app.fetch(new Request(`https://pactovio.example/api${path}`, {
   method, headers: { cookie, origin: 'https://pactovio.example', 'content-type': 'application/json' },
   ...(body === undefined ? {} : { body: JSON.stringify(body) }),
@@ -28,7 +29,7 @@ beforeAll(async () => {
     env.DB.prepare("INSERT INTO answers (id, workspace_id, tender_id, question_ref, question, status) VALUES ('ans_owned_a', ?, 'tnd_sample_teagasc_p4941', '1', 'Service scope', 'approved')").bind(a.workspace),
   ]);
 }, 60000);
-afterAll(async () => dispose?.());
+afterAll(async () => { await Promise.all(background); await dispose?.(); });
 
 describe('customer tenant boundaries', () => {
   it('starts empty and never lists sample or other customer data', async () => {

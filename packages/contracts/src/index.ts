@@ -11,3 +11,4 @@ export * from './endpoints';
 export * from './openapi';
 export * from './errors';
 export * from './customer';
+export * from './catalogue';

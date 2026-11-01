@@ -4,6 +4,7 @@ import type { Env } from '@pactovio/contracts/env';
 import { buildApp } from '../../../apps/api/src/app';
 import { createQuote } from '../src';
 import { makeSampleEnv } from './helpers';
+import { customerFixture } from '../../../apps/api/test/customer-fixture';
 
 let env: Env;
 let dispose: () => Promise<void>;
@@ -11,12 +12,11 @@ let cookie = '';
 const { app } = buildApp();
 const ctx = { waitUntil: () => undefined, passThroughOnException: () => undefined } as unknown as ExecutionContext;
 let keyless = false;
-const call = (path: string, init: RequestInit = {}) => app.fetch(new Request(`http://localhost${path}`, { ...init, headers: { ...(init.headers as Record<string, string>), cookie, ...(init.body ? { 'content-type': 'application/json' } : {}) } }), keyless ? ({ ...env, NEBIUS_API_KEY: undefined } as Env) : env, ctx);
+const call = (path: string, init: RequestInit = {}) => app.fetch(new Request(`http://localhost${path}`, { ...init, headers: { ...(init.headers as Record<string, string>), origin: 'http://localhost', cookie, ...(init.body ? { 'content-type': 'application/json' } : {}) } }), keyless ? ({ ...env, NEBIUS_API_KEY: undefined } as Env) : env, ctx);
 
 beforeAll(async () => {
   ({ env, dispose } = await makeSampleEnv());
-  const first = await call('/api/session');
-  cookie = (first.headers.get('set-cookie') ?? '').split(';')[0]!;
+  cookie = (await customerFixture(env, 'ws_kestrel_sensing')).cookie;
   const sw = await call('/api/workspaces/switch', { method: 'POST', body: JSON.stringify({ workspace_id: 'ws_kestrel_sensing' }) });
   expect(sw.status).toBe(200);
 }, 90_000);
@@ -60,7 +60,8 @@ describe('design and quote routes', () => {
   });
   it('a quote is not visible from the other workspace', async () => {
     const q = await createQuote(env, { workspaceId: 'ws_kestrel_sensing', productIds: ['prd_k_mm3'], qty: 1 });
-    const other = await app.fetch(new Request(`http://localhost/api/quotes/${q.id}`), env, ctx); // fresh session = Harbour
+    const otherCustomer = await customerFixture(env);
+    const other = await app.fetch(new Request(`http://localhost/api/quotes/${q.id}`, { headers: { cookie: otherCustomer.cookie } }), env, ctx);
     expect(other.status).toBe(404);
   });
 });

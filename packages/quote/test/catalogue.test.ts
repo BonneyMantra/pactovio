@@ -3,6 +3,8 @@ import type { Env } from '@pactovio/contracts/env';
 import { makeEnv } from '../../../apps/api/test/helpers';
 import { saveProduct } from '../src/catalogue';
 import { matchDesignRequest } from '../src/match';
+import { createQuote } from '../src/quote';
+import { loadRules } from '../src/rules';
 
 let env: Env;
 let dispose: () => Promise<void>;
@@ -36,7 +38,7 @@ describe('private customer catalogue', () => {
     const p = await saveProduct(env.DB, a, { ...input, sku: 'env-43' });
     const updated = await saveProduct(env.DB, a, { ...input, sku: 'env-43', unit_price_minor: 13000 }, p.id);
     expect(updated.unit_price_minor).toBe(13000);
-    for (const bad of [{ unit_price_minor: -1 }, { unit_price_minor: 1.5 }, { currency: 'EURO' }, { workspace_id: b }, { unit_price_minor: 1e15 }]) {
+    for (const bad of [{ unit_price_minor: -1 }, { unit_price_minor: 1.5 }, { currency: 'EURO' }, { currency: 'JPY' }, { currency: 'KWD' }, { workspace_id: b }, { unit_price_minor: 1e15 }]) {
       await expect(saveProduct(env.DB, a, { ...input, ...bad })).rejects.toBeDefined();
     }
   });
@@ -51,5 +53,13 @@ describe('private customer catalogue', () => {
     await saveProduct(env.DB, ws, input);
     await expect(matchDesignRequest(env, 'design_empty_customer', { fetch })).rejects.toMatchObject({ code: 'datasheets_required' });
     expect(calls).toBe(0);
+  });
+
+  it('quotes a customer price in its entered currency without importing sample tax assumptions', async () => {
+    const p = await saveProduct(env.DB, a, { ...input, sku: 'MY-41', currency: 'MYR', unit_price_minor: 120029 });
+    const rules = await loadRules(env.DB, a, { country: 'IE', b2b: true }, 'MYR');
+    expect(rules.rules).toMatchObject({ currency: 'MYR', tax_unconfigured: true, tax_bp: 0 });
+    const quote = await createQuote(env, { workspaceId: a, productIds: [p.id], qty: 2 });
+    expect(quote).toMatchObject({ currency: 'MYR', subtotal_minor: 240058, tax_minor: 0, total_minor: 240058 });
   });
 });
