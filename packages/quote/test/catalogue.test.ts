@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Env } from '@pactovio/contracts/env';
 import { makeEnv } from '../../../apps/api/test/helpers';
 import { saveProduct } from '../src/catalogue';
+import { matchDesignRequest } from '../src/match';
 
 let env: Env;
 let dispose: () => Promise<void>;
@@ -38,5 +39,17 @@ describe('private customer catalogue', () => {
     for (const bad of [{ unit_price_minor: -1 }, { unit_price_minor: 1.5 }, { currency: 'EURO' }, { workspace_id: b }, { unit_price_minor: 1e15 }]) {
       await expect(saveProduct(env.DB, a, { ...input, ...bad })).rejects.toBeDefined();
     }
+  });
+
+  it('guides an empty customer to catalogue and datasheet setup before any model spend', async () => {
+    const ws = 'ws_new_catalogue_customer';
+    await env.DB.prepare("INSERT INTO workspaces (id, name, segment, sample, profile_json, created_at) VALUES (?, 'Seabridge Instruments', 'industrial', 0, '{}', ?)").bind(ws, new Date().toISOString()).run();
+    await env.DB.prepare("INSERT INTO design_requests (id, workspace_id, customer, subject, spec_text) VALUES ('design_empty_customer', ?, 'Harbourview Port', 'Outdoor sensors', 'Forty outdoor monitoring sensors with IP67 enclosures.')").bind(ws).run();
+    let calls = 0;
+    const fetch: typeof globalThis.fetch = async () => { calls++; throw new Error('Unexpected model request'); };
+    await expect(matchDesignRequest(env, 'design_empty_customer', { fetch })).rejects.toMatchObject({ code: 'catalogue_required' });
+    await saveProduct(env.DB, ws, input);
+    await expect(matchDesignRequest(env, 'design_empty_customer', { fetch })).rejects.toMatchObject({ code: 'datasheets_required' });
+    expect(calls).toBe(0);
   });
 });
