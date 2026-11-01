@@ -2,7 +2,7 @@
 
 export async function api(path, opts = {}) {
   const init = { credentials: 'same-origin', headers: { accept: 'application/json' }, ...opts };
-  if (opts.body && typeof opts.body !== 'string') {
+  if (opts.body && typeof opts.body !== 'string' && !(opts.body instanceof FormData)) {
     init.body = JSON.stringify(opts.body);
     init.headers = { ...init.headers, 'content-type': 'application/json' };
   }

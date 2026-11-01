@@ -1,6 +1,9 @@
 import { api, h, icon } from './ui.js';
 import { friendlyError } from './customer-api.js';
 
+export const CATALOGUE_CURRENCIES = 'USD EUR GBP MYR INR AUD CAD SGD CHF CNY HKD NZD AED SAR ZAR SEK NOK DKK PLN CZK THB ILS BRL MXN PHP TRY'.split(' ');
+export const supportedCurrency = (value) => CATALOGUE_CURRENCIES.includes(String(value).trim().toUpperCase());
+
 // Decimal-string conversion avoids floating-point rounding of customer prices.
 export function priceToMinor(value) {
   if (!/^\d{1,11}(\.\d{1,2})?$/.test(value)) return null;
@@ -29,7 +32,7 @@ export function catalogueForm(product, onSaved, onCancel) {
     if (value.name.length < 2 || value.name.length > 160) invalid.push(['name', 'Enter a product name with 2–160 characters.']);
     if (!value.unit) invalid.push(['unit', 'Enter the unit this price applies to.']);
     if (price === null) invalid.push(['price', 'Enter a price from 0 to 10,000,000,000 with at most two decimal places, without commas.']);
-    if (!/^[A-Z]{3}$/i.test(value.currency)) invalid.push(['currency', 'Enter a three-letter currency code, such as MYR or USD.']);
+    if (!supportedCurrency(value.currency)) invalid.push(['currency', 'Choose a supported two-decimal currency from the list below. Currencies such as JPY and KWD are not supported.']);
     Object.entries(fields).forEach(([key, input]) => input.setAttribute('aria-invalid', String(invalid.some(([k]) => k === key))));
     if (invalid.length) { status.textContent = invalid.map(([, text]) => text).join(' '); fields[invalid[0][0]].focus(); return; }
     saving = true; save.disabled = true; cancel.disabled = true; form.setAttribute('aria-busy', 'true'); status.textContent = 'Saving product…';
@@ -45,8 +48,9 @@ export function catalogueForm(product, onSaved, onCancel) {
     field('name', 'Product name', product?.name, { maxlength: 160 }),
     field('family', 'Product family · optional', product?.family, { maxlength: 160 }),
     h('div.catalogue-fields', field('price', 'Unit price', product ? minorToPrice(product.unit_price_minor) : '', { inputmode: 'decimal', placeholder: '0.00' }),
-      field('currency', 'Currency code', product?.currency, { maxlength: 3, placeholder: 'MYR', style: { textTransform: 'uppercase' } }),
+      field('currency', 'Currency code', product?.currency, { maxlength: 3, placeholder: 'MYR', 'aria-describedby': 'catalogue-currencies', style: { textTransform: 'uppercase' } }),
       field('unit', 'Priced per', product?.unit || product?.specs?.unit || 'each', { maxlength: 40 })),
+    h('p.xs.ink2', { id: 'catalogue-currencies' }, `Supported currencies (two decimal places): ${CATALOGUE_CURRENCIES.join(', ')}.`),
     status, h('div.company-actions', cancel, save));
   return form;
 }

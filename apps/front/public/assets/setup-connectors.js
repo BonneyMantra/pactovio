@@ -17,7 +17,7 @@ export async function setupConnectors(root) {
       } }, connected ? 'Connected' : c.status === 'pending' ? 'Reconnect' : 'Connect', connected ? icon('check', 14) : icon('out', 14));
       return h('div.setup-connector', h('div.setup-connector-head', providerMark(c.provider, 28), h('div', h('strong.small', c.name || c.provider),
         h('div.xs.ink2', connected ? c.account_label || 'Account connected' : c.status === 'pending' ? 'Connection pending — reconnect to finish' : c.status === 'needs_work_account' ? 'Requires a Microsoft work account' : c.description || 'Not connected'))), button, status);
-    })), !items.length ? h('p.small.ink2', 'No connections are available right now. You can add requests manually.') : null,
+    })), ...(!items.length ? [h('p.small.ink2', 'No connections are available right now. You can add requests manually.')] : []),
     h('button.btn.btn-ghost.btn-sm', { type: 'button', onclick: () => setupConnectors(root) }, icon('refresh', 14), 'Refresh connection status'));
   } catch (e) { root.replaceChildren(h('div.error-box', friendlyError(e)), h('button.btn.btn-secondary.btn-sm', { onclick: () => setupConnectors(root) }, 'Retry connections')); }
 }

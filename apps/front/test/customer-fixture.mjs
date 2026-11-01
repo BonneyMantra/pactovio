@@ -5,14 +5,21 @@ import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { resolve, extname, sep } from 'node:path';
 const publicRoot = resolve(fileURLToPath(new URL('../public/', import.meta.url)));
-const state = { signedIn: false, company: {}, completed: false, products: [], errors: {}, email: '', calls: [] };
+const state = { signedIn: false, company: {}, completed: false, products: [], evidence: [], errors: {}, email: '', calls: [] };
 const json = (res, data, status = 200) => { res.writeHead(status, { 'content-type': 'application/json' }); res.end(JSON.stringify(data)); };
 const session = () => ({ authenticated: true, user: { id: 'usr_fixture', email: state.email }, workspace_id: 'ws_fixture', workspace: { id: 'ws_fixture', name: state.company.name || 'Your company', sample: 0, segment: state.company.supplier_segment }, onboarding_complete: state.completed });
 const onboarding = () => ({ company: state.company, settings: {}, completed_at: state.completed ? '2026-11-01T01:00:00Z' : null, updated_at: new Date().toISOString() });
 const server = createServer(async (req, res) => {
-  const url = new URL(req.url, 'http://localhost'); let raw = '';
-  for await (const chunk of req) raw += chunk;
-  let body; try { body = raw ? JSON.parse(raw) : {}; } catch { return json(res, { error: 'Malformed fixture request' }, 400); }
+  const url = new URL(req.url, 'http://localhost'); const chunks = [];
+  for await (const chunk of req) chunks.push(chunk);
+  const raw = Buffer.concat(chunks);
+  let body; try {
+    if (req.headers['content-type']?.startsWith('multipart/form-data')) {
+      const form = await new Request('http://fixture.local', { method: 'POST', headers: req.headers, body: raw }).formData();
+      const file = form.get('file');
+      body = { ...Object.fromEntries(form), file: file instanceof File ? { name: file.name, size: file.size, type: file.type, text: await file.text() } : null };
+    } else body = raw.length ? JSON.parse(raw.toString()) : {};
+  } catch { return json(res, { error: 'Malformed fixture request' }, 400); }
   if (url.pathname === '/__fixture') { if (req.method === 'POST') Object.assign(state, body); return json(res, state); }
   if (url.pathname.startsWith('/api/')) {
     const path = url.pathname.slice(4); state.calls.push({ path, method: req.method, body });
@@ -29,6 +36,14 @@ const server = createServer(async (req, res) => {
     if (path === '/onboarding/complete') { state.completed = true; return json(res, onboarding()); }
     if (path === '/connectors') return json(res, { items: [{ provider: 'gmail', name: 'Gmail', category: 'email', status: 'available', description: 'Bring customer requests into your inbox' }, { provider: 'googledrive', name: 'Google Drive', category: 'files', status: 'pending' }, { provider: 'hubspot', name: 'HubSpot', category: 'crm', status: 'connected', account_label: 'Fixture account' }] });
     if (/^\/connectors\/.+\/connect$/.test(path)) return json(res, { error: 'Fixture blocks external OAuth', code: 'unavailable' }, 503);
+    if (path === '/evidence' && req.method === 'GET') return json(res, { items: state.evidence });
+    if (path === '/evidence' && req.method === 'POST') {
+      if (!body.file?.size) return json(res, { error: 'Choose a file', code: 'validation' }, 400);
+      if (state.uploadDelay) await new Promise((done) => setTimeout(done, state.uploadDelay));
+      const id = `ev_fixture_${state.evidence.length + 1}`;
+      state.evidence.push({ id, kind: body.kind, title: body.title || body.file.name, valid_to: body.valid_to || null, text: body.file.text });
+      return json(res, { evidence_id: id, status: 'ready' });
+    }
     if (path === '/products' && req.method === 'GET') return json(res, { items: state.products });
     if (path === '/products' || path.startsWith('/products/')) {
       const id = path.split('/')[2] || `prd_${state.products.length + 1}`;
@@ -47,4 +62,4 @@ const server = createServer(async (req, res) => {
   try { const bytes = await readFile(filename); res.writeHead(200, { 'content-type': ({ '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml' })[extname(filename)] || 'application/octet-stream' }); res.end(bytes); }
   catch { json(res, { error: 'Fixture file missing' }, 404); }
 });
-server.listen(Number(process.argv[2] || 43181), '127.0.0.1');
+server.listen(Number(process.argv[2] || 43181), '127.0.0.1', () => process.send?.({ port: server.address().port }));

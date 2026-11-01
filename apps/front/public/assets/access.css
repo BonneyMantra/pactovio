@@ -89,3 +89,10 @@
 .company-settings[hidden] { display: none; }
 .company-settings + .card { margin-top: 24px; }
 @media (max-width: 680px) { .catalogue-fields { grid-template-columns: 1fr; } }
+
+.evidence-upload { margin-bottom: 24px; }
+.evidence-file-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.evidence-filename { overflow-wrap: anywhere; min-width: 0; flex: 1 1 220px; }
+.evidence-kinds { display: flex; gap: 8px; flex-wrap: wrap; }
+.evidence-kinds button[aria-pressed=true] { background: var(--accent-soft); border-color: var(--accent); color: var(--ink); }
+.evidence-upload [role=status] { min-height: 20px; }
