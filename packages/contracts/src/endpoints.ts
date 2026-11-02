@@ -8,6 +8,7 @@ import {
   ConnectorCatalogItem,
 } from './entities-ops';
 import * as V from './views';
+import { ProductInput } from './catalogue';
 
 const id = z.object({ id: z.string() });
 const empty = z.object({ ok: z.boolean() });
@@ -21,11 +22,11 @@ const TenderListQuery = PageQuery.extend({
 /** The single source of truth for the HTTP surface. API routes, OpenAPI and the typed client all derive from this. */
 export const endpoints = {
   health: ep({ id: 'health', method: 'GET', path: '/health', tag: 'system', summary: 'Liveness and binding check', response: V.Health, status: 'live', lane: 'foundation', public: true }),
-  getSession: ep({ id: 'getSession', method: 'GET', path: '/session', tag: 'workspaces', summary: 'Current judge/app session, its workspace and caps', response: V.SessionInfo, status: 'live', lane: 'foundation' }),
+  getSession: ep({ id: 'getSession', method: 'GET', path: '/session', tag: 'workspaces', summary: 'Current verified customer, private workspace and caps', response: V.SessionInfo, status: 'live', lane: 'foundation' }),
 
-  listWorkspaces: ep({ id: 'listWorkspaces', method: 'GET', path: '/workspaces', tag: 'workspaces', summary: 'List sample workspaces', response: z.object({ items: z.array(Workspace) }), status: 'live', lane: 'foundation' }),
+  listWorkspaces: ep({ id: 'listWorkspaces', method: 'GET', path: '/workspaces', tag: 'workspaces', summary: 'List the authenticated private workspace', response: z.object({ items: z.array(Workspace) }), status: 'live', lane: 'foundation' }),
   getWorkspace: ep({ id: 'getWorkspace', method: 'GET', path: '/workspaces/{id}', tag: 'workspaces', summary: 'Get a workspace', params: id, response: Workspace, status: 'live', lane: 'foundation' }),
-  switchWorkspace: ep({ id: 'switchWorkspace', method: 'POST', path: '/workspaces/switch', tag: 'workspaces', summary: 'Bind this session to another sample workspace', body: z.object({ workspace_id: z.string() }), response: V.SessionInfo, status: 'live', lane: 'foundation' }),
+  switchWorkspace: ep({ id: 'switchWorkspace', method: 'POST', path: '/workspaces/switch', tag: 'workspaces', summary: 'Confirm the current private workspace; other IDs are forbidden', body: z.object({ workspace_id: z.string() }), response: V.SessionInfo, status: 'live', lane: 'foundation' }),
 
   getToday: ep({ id: 'getToday', method: 'GET', path: '/today', tag: 'today', summary: 'Today feed: matches, closing soon, intakes, approvals, expiring certs', response: V.TodayFeed, status: 'sample', lane: 'foundation' }),
 
@@ -59,6 +60,8 @@ export const endpoints = {
   matchDesignRequest: ep({ id: 'matchDesignRequest', method: 'POST', path: '/design-requests/{id}/match', tag: 'design', summary: 'Extract requirements and match against the product catalogue', params: id, response: DesignRequest, status: 'live', lane: 'quote' }),
   quoteDesignRequest: ep({ id: 'quoteDesignRequest', method: 'POST', path: '/design-requests/{id}/quote', tag: 'design', summary: 'Create a priced quote from the matches', params: id, body: V.QuoteFromDesignBody, response: Quote, status: 'live', lane: 'quote' }),
   listProducts: ep({ id: 'listProducts', method: 'GET', path: '/products', tag: 'design', summary: 'Product catalogue', response: z.object({ items: z.array(Product) }), status: 'sample', lane: 'quote' }),
+  createProduct: ep({ id: 'createProduct', method: 'POST', path: '/products', tag: 'design', summary: 'Add a customer product and price', body: ProductInput, response: Product, status: 'live', lane: 'quote' }),
+  updateProduct: ep({ id: 'updateProduct', method: 'PUT', path: '/products/{id}', tag: 'design', summary: 'Update an owned product and price', params: id, body: ProductInput, response: Product, status: 'live', lane: 'quote' }),
 
   listQuotes: ep({ id: 'listQuotes', method: 'GET', path: '/quotes', tag: 'quotes', summary: 'Quotes', response: z.object({ items: z.array(Quote) }), status: 'sample', lane: 'quote' }),
   getQuote: ep({ id: 'getQuote', method: 'GET', path: '/quotes/{id}', tag: 'quotes', summary: 'One quote', params: id, response: Quote, status: 'sample', lane: 'quote' }),

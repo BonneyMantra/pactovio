@@ -1,10 +1,13 @@
 import { HttpError, type ConnectorCatalogItem } from '@pactovio/contracts';
 import type { Env } from '@pactovio/contracts/env';
-import { PROVIDERS, providerSpec, SAMPLE_USER_ID, type ProviderSpec } from './catalog';
+import { PROVIDERS, providerSpec, type ProviderSpec } from './catalog';
 import type { ConnectedAccountInfo } from './composio';
 import { composioFor, makeCtx, type Deps } from './runtime';
 import { PROVIDER_ACTIONS } from './providers';
-import { connectorsForAccount, effectiveRules, getConnector, isLive, isSample, listConnectors, saveConnector, type ConnectorRow } from './store';
+import { connectorsForAccount, effectiveRules, getConnector, isLive, isSample, listConnectors, saveConnector, settlePendingConnector, type ConnectorRow } from './store';
+
+import { workspaceUserId, tokenHash } from './identity';
+import { completeOAuth, requireOAuthSession, saveOAuthState, safeReturn, stateToken } from './oauth';
 
 const SYNC_TTL_S = 20;
 
@@ -25,22 +28,19 @@ async function authConfigId(env: Env, spec: ProviderSpec, deps: Deps): Promise<s
   return id;
 }
 
-const safeRedirect = (to: string | undefined, origin: string): string => {
-  if (!to) return '/';
-  if (to.startsWith('/') && !to.startsWith('//')) return to;
-  try { return new URL(to).origin === origin ? to : '/'; } catch { return '/'; }
-};
-
 /** Lane: connectors. Composio hosted-auth redirect URL for a provider; the user returns to /api/connectors/callback. */
 export async function connectUrl(
-  env: Env, workspaceId: string, provider: string, opts: { origin?: string; redirectTo?: string } = {}, deps: Deps = {},
+  env: Env, workspaceId: string, provider: string, opts: { origin?: string; redirectTo?: string; sessionId?: string; state?: string } = {}, deps: Deps = {},
 ): Promise<string> {
   const spec = providerSpec(provider);
   if (!spec) throw new HttpError(404, `Unknown connector ${provider}`, 'not_found');
   const origin = opts.origin ?? 'https://pactovio.pages.dev';
-  const redirectTo = safeRedirect(opts.redirectTo, origin);
+  const redirectTo = safeReturn(opts.redirectTo);
+  if (!opts.sessionId) throw new HttpError(403, 'A customer session is required', 'forbidden');
   const cur = await getConnector(env, workspaceId, provider);
-  const userId = (cur?.meta.composio_user_id as string | undefined) ?? SAMPLE_USER_ID;
+  const userId = await workspaceUserId(env, workspaceId);
+  await requireOAuthSession(env, workspaceId, opts.sessionId);
+  if (userId === 'pactovio-demo') throw new HttpError(403, 'Sample connections are read-only', 'forbidden');
 
   // Outlook Calendar rides on the Outlook login: reuse it when it is already connected.
   if (spec.sharesAccountWith) {
@@ -52,33 +52,39 @@ export async function connectUrl(
     return connectUrl(env, workspaceId, spec.sharesAccountWith, opts, deps);
   }
 
+  if (env.ENVIRONMENT === 'production' && env.COMPOSIO_CALLBACK_VERIFIER_ENABLED !== 'true') throw new HttpError(409, 'Configure the Composio callback verifier before connecting customers', 'needs_setup');
   const acId = await authConfigId(env, spec, deps);
   const callback = new URL('/api/connectors/callback', origin);
-  callback.searchParams.set('w', workspaceId);
-  callback.searchParams.set('p', provider);
+  const state = opts.state ?? stateToken();
+  callback.searchParams.set('state', state);
   const link = await composioFor(env, deps).createLink({ authConfigId: acId, userId, callbackUrl: callback.toString() });
+  await saveOAuthState(env, { state, workspace: workspaceId, session: opts.sessionId, provider, account: link.connectedAccountId, user: userId, back: redirectTo });
   await saveConnector(env, workspaceId, provider, {
     status: 'pending',
-    meta: { ...(cur && !isSample(cur) ? cur.meta : {}), sample: undefined, composio_user_id: userId, pending: { connected_account_id: link.connectedAccountId, redirect_to: redirectTo, started_at: new Date().toISOString() } },
+    meta: { ...(cur && !isSample(cur) ? cur.meta : {}), sample: undefined, composio_user_id: userId, pending: { state_hash: await tokenHash(state), connected_account_id: link.connectedAccountId, redirect_to: redirectTo, started_at: new Date().toISOString() } },
   });
   await env.CACHE.delete(`cx:sync:${workspaceId}`).catch(() => undefined);
   return link.redirectUrl;
 }
 
 /** Mark a provider connected (and its shared-account sibling), then register the mailbox trigger for email providers. */
-export async function markConnected(env: Env, workspaceId: string, provider: string, acct: { id: string; label: string | null }, deps: Deps = {}, owner = false): Promise<void> {
+export async function markConnected(env: Env, workspaceId: string, provider: string, acct: { id: string; label: string | null }, deps: Deps = {}, owner = false, stateHash?: string): Promise<boolean> {
   const cur = await getConnector(env, workspaceId, provider);
   // `owner` marks the workspace that completed the connect flow; sync never shares an owned account with other workspaces.
-  const meta = { ...(cur && !isSample(cur) ? cur.meta : {}), account_label: acct.label, composio_user_id: cur?.meta.composio_user_id ?? SAMPLE_USER_ID, ...(owner ? { owner: true } : {}) };
+  const meta = { ...(cur && !isSample(cur) ? cur.meta : {}), account_label: acct.label, composio_user_id: await workspaceUserId(env, workspaceId), ...(owner ? { owner: true } : {}) };
   delete (meta as Record<string, unknown>).pending;
   delete (meta as Record<string, unknown>).sample;
-  await saveConnector(env, workspaceId, provider, { status: 'connected', external_account_id: acct.id, connected_at: new Date().toISOString(), meta });
+  if (stateHash) {
+    if (!await settlePendingConnector(env, workspaceId, provider, stateHash, { status: 'connected', account: acct.id,
+      meta: { account_label: acct.label, composio_user_id: meta.composio_user_id, owner: true, last_error: null } })) return false;
+  } else await saveConnector(env, workspaceId, provider, { status: 'connected', external_account_id: acct.id, connected_at: new Date().toISOString(), meta });
   const sibling = PROVIDERS.find((p) => p.sharesAccountWith === provider);
   if (sibling) {
     const s = await getConnector(env, workspaceId, sibling.provider);
-    await saveConnector(env, workspaceId, sibling.provider, { status: 'connected', external_account_id: acct.id, connected_at: new Date().toISOString(), meta: { ...(s && !isSample(s) ? s.meta : {}), account_label: acct.label, composio_user_id: meta.composio_user_id } });
+    await saveConnector(env, workspaceId, sibling.provider, { status: 'connected', external_account_id: acct.id, connected_at: new Date().toISOString(), meta: { ...(s && !isSample(s) ? s.meta : {}), account_label: acct.label, composio_user_id: meta.composio_user_id, ...(owner ? { owner: true } : {}) } });
   }
   if (provider === 'gmail' || provider === 'outlook') await watchInbox(env, workspaceId, provider, deps);
+  return true;
 }
 
 /** Register the new-mail trigger for this workspace (best effort; the connect flow must not fail on it). */
@@ -87,31 +93,22 @@ export async function watchInbox(env: Env, workspaceId: string, provider: 'gmail
   if (!isLive(row)) return { ok: false, error: 'not connected' };
   try {
     await PROVIDER_ACTIONS[provider]!.watch_inbox!.run({}, makeCtx(env, row, deps));
+    const latest = await getConnector(env, workspaceId, provider);
+    if (latest?.meta.trigger_error) await saveConnector(env, workspaceId, provider, { meta: { ...latest.meta, trigger_error: undefined } });
     return { ok: true };
-  } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  } catch {
+    const error = 'Inbox trigger could not be registered; reconnect or retry shortly';
+    const latest = await getConnector(env, workspaceId, provider);
+    if (latest) await saveConnector(env, workspaceId, provider, { meta: { ...latest.meta, trigger_error: error } });
+    return { ok: false, error };
   }
 }
 
 /** GET /connectors/callback: Composio redirects here after OAuth. Returns where to send the browser. */
 export async function completeCallback(
-  env: Env, q: { w?: string; p?: string; status?: string; connected_account_id?: string }, deps: Deps = {},
+  env: Env, q: { session_uri?: string; state?: string; w?: string; p?: string; status?: string; connected_account_id?: string }, deps: Deps = {}, sessionId?: string,
 ): Promise<{ redirect: string; ok: boolean }> {
-  const row = q.w && q.p ? await getConnector(env, q.w, q.p) : null;
-  const pending = row?.meta.pending as { connected_account_id?: string; redirect_to?: string } | undefined;
-  const back = pending?.redirect_to ?? '/';
-  const sep = back.includes('?') ? '&' : '?';
-  const done = (ok: boolean) => ({ ok, redirect: `${back}${sep}connector=${encodeURIComponent(q.p ?? '')}&status=${ok ? 'success' : 'failed'}` });
-  // Callback query parameters alone are not proof: the account must be the one this workspace started.
-  if (!row || !q.w || !q.p || !pending?.connected_account_id || pending.connected_account_id !== q.connected_account_id) return done(false);
-  const acct = await composioFor(env, deps).getConnectedAccount(pending.connected_account_id);
-  if (acct.status !== 'ACTIVE') {
-    await saveConnector(env, q.w, q.p, { status: 'error', meta: { ...row.meta, pending: undefined, last_error: `Composio reports ${acct.status}` } });
-    return done(false);
-  }
-  await markConnected(env, q.w, q.p, { id: acct.id, label: acct.label }, deps, true);
-  await env.CACHE.delete(`cx:sync:${q.w}`).catch(() => undefined);
-  return done(true);
+  return completeOAuth(env, q, deps, sessionId, (workspace, provider, acct, hash) => markConnected(env, workspace, provider, acct, deps, true, hash));
 }
 
 /**
@@ -123,7 +120,8 @@ export async function syncConnectors(env: Env, workspaceId: string, deps: Deps =
   if (!env.COMPOSIO_API_KEY) return;
   if (!force && (await env.CACHE.get(`cx:sync:${workspaceId}`).catch(() => null))) return;
   const rows = await listConnectors(env, workspaceId);
-  const userIds = [...new Set([SAMPLE_USER_ID, ...rows.map((r) => r.meta.composio_user_id as string | undefined).filter((u): u is string => !!u)])];
+  const expectedUser = await workspaceUserId(env, workspaceId);
+  const userIds = [expectedUser];
   let accounts: ConnectedAccountInfo[];
   try {
     accounts = await composioFor(env, deps).listConnectedAccounts({ userIds, statuses: ['ACTIVE'] });
@@ -134,10 +132,12 @@ export async function syncConnectors(env: Env, workspaceId: string, deps: Deps =
     .bind(workspaceId).all<{ external_account_id: string | null }>()).results.map((r) => r.external_account_id).filter((x): x is string => !!x));
   for (const spec of PROVIDERS) {
     const row = rows.find((r) => r.provider === spec.provider) ?? null;
-    const uid = (row?.meta.composio_user_id as string | undefined) ?? SAMPLE_USER_ID;
-    const found = accounts.find((a) => a.toolkit === spec.toolkit && a.userId === uid);
+    const uid = expectedUser;
+    if (uid !== 'pactovio-demo' && row?.status === 'pending') continue;
+    const found = accounts.find((a) => a.status === 'ACTIVE' && a.toolkit === spec.toolkit && a.userId === uid
+      && (uid === 'pactovio-demo' || (row?.meta.owner && row.external_account_id === a.id)));
     // An account another workspace connected itself belongs to that workspace only (its mail, chat and files).
-    const acct = found && !ownedElsewhere.has(found.id) ? found : undefined;
+    const acct = found && !ownedElsewhere.has(found.id) && (expectedUser === 'pactovio-demo' || (row?.meta.owner && row.external_account_id === found.id)) ? found : undefined;
     if (found && !acct && row?.status === 'connected' && row.external_account_id === found.id && !row.meta.owner) {
       await saveConnector(env, workspaceId, spec.provider, { status: 'available', external_account_id: null, connected_at: null, meta: { composio_user_id: row.meta.composio_user_id, rules: row.meta.rules } });
       continue;
@@ -146,6 +146,8 @@ export async function syncConnectors(env: Env, workspaceId: string, deps: Deps =
       const trigger = row?.meta.config?.trigger;
       await markConnected(env, workspaceId, spec.provider, { id: acct.id, label: acct.label }, deps).catch(() => undefined);
       if (trigger && (spec.provider === 'gmail' || spec.provider === 'outlook')) await watchInbox(env, workspaceId, spec.provider, deps);
+    } else if (acct && row && (spec.provider === 'gmail' || spec.provider === 'outlook') && (row.meta.trigger_error || !row.meta.config?.trigger)) {
+      await watchInbox(env, workspaceId, spec.provider, deps);
     } else if (!acct && row && (isSample(row) || (row.status === 'connected' && row.external_account_id))) {
       await saveConnector(env, workspaceId, spec.provider, { status: 'available', external_account_id: null, connected_at: null, meta: { ...row.meta, sample: undefined, config: row.meta.config } });
     }
@@ -191,7 +193,7 @@ export async function buildCatalog(env: Env, workspaceId: string): Promise<Conne
       provider: spec.provider, name: spec.name, category: spec.category, description: spec.description, status,
       connected_at: live ? row!.connected_at : null, external_account_id: live ? row!.external_account_id : null,
       actions: spec.actions, what_it_does: spec.whatItDoes, toolkit: spec.toolkit, managed_auth: spec.managedAuth,
-      setup_note: live ? null : setup, account_label: live ? ((row!.meta.account_label as string | undefined) ?? null) : null,
+      setup_note: live ? (row!.meta.trigger_error ?? null) : setup, account_label: live ? ((row!.meta.account_label as string | undefined) ?? null) : null,
       rules: effectiveRules(spec.provider, row?.meta),
     };
   });

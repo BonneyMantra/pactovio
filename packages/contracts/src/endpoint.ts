@@ -1,6 +1,6 @@
 import type { z } from 'zod';
 
-export type Method = 'GET' | 'POST' | 'PATCH' | 'DELETE';
+export type Method = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 export type Lane =
   | 'foundation' | 'sources' | 'pack' | 'engine' | 'quote' | 'connectors' | 'billing' | 'agent' | 'audit';
 /** live = real data path; sample = served from seeded rows until the owning lane replaces them; stub = 501 not_implemented */

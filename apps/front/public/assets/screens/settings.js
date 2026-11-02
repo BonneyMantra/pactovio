@@ -10,7 +10,7 @@ export async function render(root, _p, ctx) {
   const keys = h('div.card');
   root.append(
     h('div.page-head', h('div', h('h1.title', 'Billing & usage'), h('div.sub', 'Credits pay for pack reads and spec matches. 1 credit = $0.40. Test mode: no real charges.'))),
-    plans, sectionHead('Usage'), usage, sectionHead('API keys', h('a.small.muted', { href: '/v1/openapi.json', target: '_blank' }, 'OpenAPI ↗')), keys);
+    h('a.card.company-settings-link', { href: '#/company', style: { padding: '16px 20px', display: 'flex', gap: '12px', marginBottom: '20px' } }, icon('settings'), h('span', 'Review company settings'), h('span.spacer'), icon('chev')), plans, sectionHead('Usage'), usage, sectionHead('API keys', h('a.small.muted', { href: '/v1/openapi.json', target: '_blank' }, 'OpenAPI ↗')), keys);
 
   load(plans, async () => {
     const b = await api('/billing');
@@ -56,7 +56,7 @@ export async function render(root, _p, ctx) {
     return h('div',
       items.length ? h('table.table', h('thead', h('tr', h('th', 'Name'), h('th', 'Key'), h('th', 'Created'), h('th.r', 'Last used'))),
         h('tbody', items.map((k) => h('tr', h('td', k.name || '—'), h('td.mono', `${k.prefix || 'pk_'}…`), h('td.muted', fmt.date(k.created_at)), h('td.r.muted', k.last_used_at ? fmt.ago(k.last_used_at) : 'never'))))) : empty('No API keys', null),
-      h('div.xs.muted', { style: { padding: '12px' } }, 'Keys for the shared demo workspaces are issued by the operator. Use a key with the REST API (/v1) or the MCP server (/mcp).'));
+      h('div.xs.muted', { style: { padding: '12px' } }, 'API keys are scoped to your workspace. Use a key with the REST API (/v1) or the MCP server (/mcp).'));
   });
 }
 

@@ -1,5 +1,6 @@
 // Connections: every connector by category with live status, plus the live event stream.
 import { api, h, icon, chip, fmt, toast, load, empty } from '../ui.js';
+import { friendlyError, connectorDestination } from '../customer-api.js';
 import { logoTile, opt, confirmRow } from './ops-kit.js';
 
 const CATS = [['email', 'Email'], ['chat', 'Chat'], ['crm', 'CRM'], ['files', 'Files'], ['calendar', 'Calendar'], ['projects', 'Projects'], ['signing', 'Signing'], ['accounting', 'Accounting']];
@@ -9,6 +10,9 @@ export async function render(root, _p, ctx) {
   ctx.setCrumbs('Connections');
   const head = h('div.page-head', h('div', h('h1.title', 'Connections'), h('div.sub', 'Where Pactovio listens for requests and where it files the work.')));
   const body = h('div');
+  const callback = new URLSearchParams(location.hash.split('?')[1] || '');
+  if (callback.get('status') === 'failed') root.append(h('div.error-box', { role: 'status' }, 'The connection did not complete. Choose Connect to try again.'));
+  if (callback.get('status') === 'success') root.append(h('div.small.ink2', { role: 'status' }, 'Connection returned. Checking current provider status below.'));
   const events = h('div.events-list');
   root.append(head, h('div.cx-layout', body, h('aside.card.events-panel',
     h('div.events-head', h('span.live-dot.on'), h('span.small', { style: { fontWeight: 510 } }, 'Live events'), h('span.xs.muted', 'workspace stream')), events)));
@@ -17,7 +21,7 @@ export async function render(root, _p, ctx) {
     const { items = [] } = await api('/connectors');
     if (!items.length) return empty('No connectors', 'The catalogue is empty.');
     const connected = items.filter((c) => c.status === 'connected').length;
-    head.querySelector('.sub').textContent = `${connected} connected · live-tested 30 Oct · drafts only, nothing sends without approval`;
+    head.querySelector('.sub').textContent = `${connected} connected · drafts only, nothing sends without approval`;
     return h('div', CATS.map(([key, label]) => {
       const group = items.filter((c) => (c.category || '').toLowerCase() === key);
       if (!group.length) return null;
@@ -35,6 +39,13 @@ export async function render(root, _p, ctx) {
       foot);
     if (isOn) {
       foot.append(h('span.xs.muted', c.connected_at ? `Since ${fmt.date(c.connected_at)}` : ''), h('span.spacer'));
+      const disconnect = h('button.btn.btn-ghost.btn-xs', { type: 'button', onclick: async () => {
+        if (!await confirmRow(foot, `Disconnect ${c.name || c.provider} from this workspace? You can reconnect later.`, 'Disconnect')) return;
+        disconnect.disabled = true;
+        try { await api(`/connectors/${encodeURIComponent(c.provider)}/disconnect`, { method: 'POST', body: {} }); location.reload(); }
+        catch (e) { toast(e.message); disconnect.disabled = false; }
+      } }, 'Disconnect');
+      foot.append(disconnect);
       const action = (c.actions || []).find((a) => !READONLY.test(a));
       if (action) {
         const btn = h('button.btn.btn-secondary.btn-xs', { onclick: async () => {
@@ -49,10 +60,10 @@ export async function render(root, _p, ctx) {
       }
     } else if (c.status !== 'needs_work_account') {
       foot.append(h('span.spacer'), h('button.btn.btn-primary.btn-xs', { onclick: async (e) => {
-        e.currentTarget.disabled = true;
-        try { const r = await api(`/connectors/${c.provider}/connect`, { method: 'POST', body: { redirect_to: `${location.origin}/app#/connections` } }); if (r?.redirect_url) location.href = r.redirect_url; }
-        catch (err) { toast(err.status === 403 ? 'This demo workspace is shared, so connections are managed by the operator.' : err.message); }
-        finally { e.currentTarget && (e.currentTarget.disabled = false); }
+        const button = e.currentTarget; button.disabled = true;
+        try { const r = await api(`/connectors/${c.provider}/connect`, { method: 'POST', body: { redirect_to: '/app#/connections' } }); location.assign(connectorDestination(r?.redirect_url)); }
+        catch (err) { toast(friendlyError(err)); }
+        finally { button.disabled = false; }
       } }, 'Connect'));
     }
     return card;

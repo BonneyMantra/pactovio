@@ -42,12 +42,9 @@ Cookies: the API sets `pv_s` (HttpOnly, SameSite=Lax). From a dev server on anot
 - Times are ISO 8601 UTC. Render in the viewer's timezone; deadlines in the sample data are real tender deadlines (GMT).
 - **Sample data**: ids contain `_sample_`; `tenders.raw.sample`, `evidence.meta.sample` and `connectors.meta.sample` are `true`. Lanes replace sample rows when real ones exist. Teagasc (`tnd_sample_teagasc_p4941`) has the richest set: 10 requirements (MET/PARTIAL/GAP/NEEDS_EVIDENCE), 3 verdicts (BID, BID, CONDITIONAL), 3 drafted answers with claim checks, a completed replay run with 4 steps, buyer intel and 7 evidence items.
 
-## Sessions and the judge model
+## Customer sessions
 
-- `/api/*` uses an **anonymous session cookie `pv_s`**: created on first request, stored in `judge_sessions`, bound to a sample workspace (default `ws_harbour_digital`, the IT bidder). `POST /api/workspaces/switch { workspace_id }` rebinds the session to `ws_kestrel_sensing` (industrial). No login.
-- Caps per session (`GET /api/limits`): **2 fresh pack runs, 3 Tavily buyer refreshes, 10 agent turns per minute**. Showcase runs are replayable and labelled `replay: true`; replays do not count against the caps.
-- `/v1/*` serves the **same handlers** but authenticates with `Authorization: Bearer pk_...` (create one at `POST /api/api-keys`; the key is shown once, only its SHA-256 is stored). API-key calls have no judge session, so `/session` and `/workspaces/switch` return 400 `no_session`.
-- Judge URL: `https://pactovio.pages.dev` (Pages `_worker.js` forwards `/api`, `/v1`, `/mcp`, `/webhooks`, `/ics`, `/dev` to the API and everything else to the UI Worker `WEB` once bound).
+`/api/*` requires a verified email-code customer session (`pv_customer`), apart from explicitly public health/ingest routes. Legacy anonymous `pv_s` cookies and sample API keys do not authenticate customers. See [the PAC-010 backend contract](../apps/api/CUSTOMER-AUTH.md) for email-code endpoints, resumable company onboarding, error/status handling, Composio callback verification and coordinator migration/configuration requirements. `/v1/*` retains Bearer API-key authentication for private workspaces. New customers start with truthful empty data; existing samples are retained internally.
 
 ## Status legend
 

@@ -137,6 +137,10 @@ export class Composio {
     };
   }
 
+  async completeAuth(userId: string, sessionUri: string): Promise<{ connected_account_id: string; toolkit_slug: string }> {
+    return this.request('POST', '/connected_accounts/complete_auth', { user_id: userId, session_uri: sessionUri });
+  }
+
   async getConnectedAccount(id: string): Promise<ConnectedAccountInfo> {
     return this.mapAccount(await this.request('GET', `/connected_accounts/${encodeURIComponent(id)}`));
   }

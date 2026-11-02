@@ -51,7 +51,7 @@ export async function createQuote(env: Env, input: CreateQuoteInput): Promise<Qu
   const missing = picks.filter((p) => !byId.has(p.id));
   if (missing.length) throw new HttpError(400, `Unknown product: ${missing[0]!.id}`, 'validation');
 
-  const { rules, validity_days } = await loadRules(db, input.workspaceId, buyer);
+  const { rules, validity_days } = await loadRules(db, input.workspaceId, buyer, prows[0]?.currency);
   let totals;
   try {
     totals = priceQuote(picks.map((p) => { const pr = byId.get(p.id)!; return { sku: pr.sku, description: pr.name, qty: p.qty, unit_price_minor: unitPrice(pr, rules.currency) }; }), rules);

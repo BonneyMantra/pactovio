@@ -18,7 +18,7 @@ function planCard(p, current) {
 
 export async function render(root, _params, ctx) {
   ctx.setCrumbs('Pricing');
-  root.append(h('div.page-head', h('div', h('h1.title', 'Pricing'), h('div.sub', 'Prices in USD. One credit is $0.40. Payments are handled by Dodo Payments (test mode in this demo).'))));
+  root.append(h('div.page-head', h('div', h('h1.title', 'Pricing'), h('div.sub', 'Prices in USD. One credit is $0.40. Payments are handled by Dodo Payments (test mode — no real charges).'))));
   const body = h('div');
   root.append(body);
   await load(body, async () => {

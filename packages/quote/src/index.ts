@@ -7,3 +7,4 @@ export { loadRules, unitPrice } from './rules';
 export { parseSpec, type SpecInput } from './spec';
 export { chunkPages, pageOf, type Chunk } from './chunk';
 export { startRun } from './runlog';
+export { ProductInput, saveProduct } from './catalogue';

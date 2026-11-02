@@ -22,9 +22,14 @@ export interface Env {
   DODO_API_BASE?: string;
 
   // Secrets (wrangler secret put / .dev.vars)
+  AUTH_SECRET?: string;
+  RESEND_API_KEY?: string;
+  AUTH_EMAIL_FROM?: string;
   NEBIUS_API_KEY?: string;
   TAVILY_API_KEY?: string;
   COMPOSIO_API_KEY?: string;
+  /** Set true only after configuring the project callback verifier URL. */
+  COMPOSIO_CALLBACK_VERIFIER_ENABLED?: string;
   /** Signing secret of the Composio project webhook subscription (verifies /webhooks/composio). */
   COMPOSIO_WEBHOOK_SECRET?: string;
   DODO_PAYMENTS_API_KEY?: string;

@@ -2,6 +2,7 @@ import { DurableObject } from 'cloudflare:workers';
 import { nextDigestAt, streamToolLoop } from '@pactovio/agent';
 import { AgentWsMessage, HttpError, type PactovioEvent } from '@pactovio/contracts';
 import type { Env } from '@pactovio/contracts/env';
+import { isCustomerSessionActive } from '../lib/customer-session';
 import { runTurn } from './chat';
 import { decideAction } from './decide';
 import { postDigest, runDaily } from './digest';
@@ -12,7 +13,7 @@ import { HubStore, INBOX_THREAD, toPending } from './store';
 const SSE_MAX_MS = 5 * 60_000;
 const SSE_PING_MS = 15_000;
 
-interface Sub { write(s: string): boolean; close(): void }
+interface Sub { session: string | null; write(s: string): boolean; close(): void }
 const json = (body: unknown, status = 200) => Response.json(body, { status });
 
 /**
@@ -35,15 +36,16 @@ export class AgentHub extends DurableObject<Env> {
       env: this.env, store: this.store, workspaceId, now: Date.now, loop: streamToolLoop,
       send: (frame, scope) => {
         const data = JSON.stringify(frame);
-        for (const ws of this.ctx.getWebSockets()) {
-          const att = ws.deserializeAttachment() as { session?: string } | null;
-          if (scope?.session && att?.session !== scope.session) continue;
-          try { ws.send(data); } catch { /* closed socket */ }
-        }
+        this.ctx.waitUntil(this.sendToSockets(workspaceId, data, scope?.session));
       },
       publish: (m) => {
         const data = `event: message\nid: ${m.id}\ndata: ${JSON.stringify({ workspace_id: workspaceId, event_type: m.event_type, message: m })}\n\n`;
-        for (const s of this.subs) if (!s.write(data)) this.subs.delete(s);
+        this.ctx.waitUntil((async () => {
+          for (const sub of this.subs) {
+            if (sub.session && !await isCustomerSessionActive(this.env.DB, sub.session, workspaceId)) { sub.close(); continue; }
+            if (!sub.write(data)) this.subs.delete(sub);
+          }
+        })());
       },
     };
   }
@@ -62,6 +64,7 @@ export class AgentHub extends DurableObject<Env> {
     try {
       const ws = this.workspace(request);
       const session = request.headers.get('x-pv-session') || url.searchParams.get('session') || null;
+      if (session && !await isCustomerSessionActive(this.env.DB, session, ws)) throw new HttpError(401, 'Session expired', 'unauthorized');
       const key = sessionKeyOf(session);
       this.store.ensureInbox();
       if ((await this.ctx.storage.getAlarm()) === null) await this.ctx.storage.setAlarm(nextDigestAt(Date.now()));
@@ -97,7 +100,7 @@ export class AgentHub extends DurableObject<Env> {
         const message = await postDigest(this.deps(ws));
         return json({ thread_id: INBOX_THREAD, message });
       }
-      if (path === '/events' && request.method === 'GET') return this.sse(url.searchParams.get('since') ?? request.headers.get('last-event-id') ?? undefined);
+      if (path === '/events' && request.method === 'GET') return this.sse(url.searchParams.get('since') ?? request.headers.get('last-event-id') ?? undefined, session);
       return json({ error: 'Not found', code: 'not_found' }, 404);
     } catch (e) {
       if (e instanceof HttpError) return json({ error: e.message, code: e.code ?? 'error' }, e.status);
@@ -127,12 +130,13 @@ export class AgentHub extends DurableObject<Env> {
     return new Response(null, { status: 101, webSocket: pair[0] });
   }
 
-  private sse(since: string | undefined): Response {
+  private sse(since: string | undefined, session: string | null): Response {
     const { readable, writable } = new TransformStream<Uint8Array>();
     const writer = writable.getWriter();
     const enc = new TextEncoder();
     let timers: ReturnType<typeof setTimeout>[] = [];
     const sub: Sub = {
+      session,
       write: (s) => { writer.write(enc.encode(s)).catch(() => this.subs.delete(sub)); return true; },
       close: () => { timers.forEach(clearTimeout); timers = []; this.subs.delete(sub); writer.close().catch(() => undefined); },
     };
@@ -141,7 +145,10 @@ export class AgentHub extends DurableObject<Env> {
     if (since) {
       for (const m of this.store.inboxSince(since)) sub.write(`event: message\nid: ${m.id}\ndata: ${JSON.stringify({ workspace_id: ws, event_type: m.event_type, message: m })}\n\n`);
     }
-    const ping = () => { sub.write(': ping\n\n'); timers.push(setTimeout(ping, SSE_PING_MS)); };
+    const ping = async () => {
+      if (session && !await isCustomerSessionActive(this.env.DB, session, ws)) return sub.close();
+      sub.write(': ping\n\n'); timers.push(setTimeout(ping, SSE_PING_MS));
+    };
     timers.push(setTimeout(ping, SSE_PING_MS));
     timers.push(setTimeout(() => { sub.write('event: reconnect\ndata: {}\n\n'); sub.close(); }, SSE_MAX_MS));
     this.subs.add(sub);
@@ -159,6 +166,7 @@ export class AgentHub extends DurableObject<Env> {
     const att = ws.deserializeAttachment() as { session?: string } | null;
     const session = att?.session && att.session !== 'apikey' ? att.session : null;
     try {
+      if (session && !await isCustomerSessionActive(this.env.DB, session, this.workspace())) { ws.close(1008, 'Session expired'); return; }
       const d = this.deps(this.workspace());
       if (frame.type === 'user_message') await runTurn(d, { sessionId: session, threadId: frame.thread_id, content: frame.content });
       else if (frame.type === 'action_decision') await decideAction(d, frame.action_id, frame.decision, { sessionId: session });
@@ -166,6 +174,17 @@ export class AgentHub extends DurableObject<Env> {
     } catch (e) {
       if (e instanceof HttpError) reply({ type: 'error', error: e.message, code: e.code });
       else reply({ type: 'error', error: 'Internal error', code: 'internal' });
+    }
+  }
+
+  private async sendToSockets(workspace: string, data: string, session?: string): Promise<void> {
+    for (const ws of this.ctx.getWebSockets()) {
+      const att = ws.deserializeAttachment() as { session?: string } | null;
+      if (session && att?.session !== session) continue;
+      if (att?.session && att.session !== 'apikey' && !await isCustomerSessionActive(this.env.DB, att.session, workspace)) {
+        ws.close(1008, 'Session expired'); continue;
+      }
+      try { ws.send(data); } catch { /* closed socket */ }
     }
   }
 

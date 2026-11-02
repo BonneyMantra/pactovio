@@ -44,7 +44,10 @@ export interface ScanStats {
 export const emptyStats = (): ScanStats => ({ scanned: 0, new_tenders: 0, triaged: 0, matched: 0, packs: 0, pack_files: 0, errors: [], matches: [] });
 
 export async function loadWorkspaces(env: Env, only?: string): Promise<TriageWorkspace[]> {
-  const res = await env.DB.prepare(`SELECT id, name, segment, profile_json FROM workspaces ${only ? 'WHERE id = ?' : ''} ORDER BY id`)
+  // Scheduled customer work starts after setup; retained demo rows must not consume customer budget.
+  const filter = only ? 'WHERE id = ?' : `WHERE sample = 0 AND EXISTS
+    (SELECT 1 FROM company_onboarding o WHERE o.workspace_id = workspaces.id AND o.completed_at IS NOT NULL)`;
+  const res = await env.DB.prepare(`SELECT id, name, segment, profile_json FROM workspaces ${filter} ORDER BY id`)
     .bind(...(only ? [only] : []))
     .all<Record<string, unknown>>();
   return res.results.map((r) => {
@@ -57,6 +60,7 @@ const isoDay = (d: Date) => d.toISOString().slice(0, 10);
 
 /** Pull new notices for the segments present (TED per segment, UK Find a Tender once). Source failures are reported, not fatal. */
 export async function fetchNotices(workspaces: TriageWorkspace[], opts: ScanOptions = {}): Promise<{ tenders: Tender[]; errors: string[] }> {
+  if (!workspaces.length) return { tenders: [], errors: [] };
   const now = opts.now ?? new Date();
   const since = isoDay(new Date(now.getTime() - (opts.sinceDays ?? 3) * DAY_MS));
   const limit = opts.maxPerQuery ?? 100;

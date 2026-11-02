@@ -6,19 +6,22 @@ import { buildApp } from '../src/app';
 import { fanOut, wants } from '../src/queue';
 import { buildIcs, esc } from '../src/routes/ics';
 import { assertWebhookUrl } from '../src/routes/webhooks';
+import { customerFixture } from './customer-fixture';
 import { makeEnv } from './helpers';
 
 let env: Env;
 let dispose: () => Promise<void>;
 const { app } = buildApp();
 const ctx = { waitUntil: () => undefined, passThroughOnException: () => undefined } as unknown as ExecutionContext;
-const call = (path: string, init?: RequestInit) => app.fetch(new Request(`http://localhost${path}`, init), env, ctx);
+let customerCookie = '';
+const call = (path: string, init: RequestInit = {}) => app.fetch(new Request(`http://localhost${path}`, { ...init, headers: { cookie: customerCookie, origin: 'http://localhost', ...(init.headers as Record<string, string>) } }), env, ctx);
 const WS = 'ws_f_real';
 const SECRET = 'whsec_' + btoa('lane-f-test-secret-0123456789abcdef');
 
 beforeAll(async () => {
   ({ env, dispose } = await makeEnv());
   env.DODO_WEBHOOK_SECRET = SECRET;
+  customerCookie = (await customerFixture(env, 'ws_kestrel_sensing')).cookie;
   await env.DB.prepare("INSERT INTO workspaces (id, name, segment, sample, created_at) VALUES (?, 'Real Co', 'it', 0, ?)").bind(WS, new Date().toISOString()).run();
 }, 60_000);
 afterAll(async () => dispose?.());
@@ -178,7 +181,7 @@ describe('API keys', () => {
     const created = await call('/api/api-keys', { method: 'POST', body: JSON.stringify({ name: 'ci' }), headers: { 'content-type': 'application/json' } });
     const { id, key } = (await created.json()) as { id: string; key: string };
     expect(key.startsWith('pk_')).toBe(true);
-    const cookie = created.headers.get('set-cookie')!.split(';')[0]!;
+    const cookie = customerCookie;
     const listed = JSON.stringify(await (await call('/api/api-keys', { headers: { cookie } })).json());
     expect(listed).not.toContain(key);
     expect((await call('/v1/limits', { headers: { authorization: `Bearer ${key}` } })).status).toBe(200);
@@ -217,7 +220,7 @@ describe('ICS', () => {
 
 describe('SSE', () => {
   it('GET /api/events with Accept: text/event-stream streams events', async () => {
-    await env.DB.prepare("INSERT INTO events (id, workspace_id, type, payload_json, at) VALUES ('evt_sse1', 'ws_harbour_digital', 'tender.matched', '{}', ?)").bind(new Date().toISOString()).run();
+    await env.DB.prepare("INSERT INTO events (id, workspace_id, type, payload_json, at) VALUES ('evt_sse1', 'ws_kestrel_sensing', 'tender.matched', '{}', ?)").bind(new Date().toISOString()).run();
     const res = await call('/api/events', { headers: { accept: 'text/event-stream' } });
     expect(res.headers.get('content-type')).toContain('text/event-stream');
     const reader = res.body!.getReader();

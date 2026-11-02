@@ -1,6 +1,7 @@
+import { invokeTool } from '../lib/customer-tools';
 import { budgetMessage, isBudgetError } from '@pactovio/models';
 import {
-  AGENT_CAPS, agentTools, checkTokenBudget, checkTurnCap, invokeTool, systemPrompt, type ToolRunResult,
+  AGENT_CAPS, agentTools, checkTokenBudget, checkTurnCap, systemPrompt, type ToolRunResult,
 } from '@pactovio/agent';
 import type { AgentMessage, PendingAction } from '@pactovio/contracts';
 import type { ChatMessage } from '@pactovio/models';

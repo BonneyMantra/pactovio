@@ -6,7 +6,7 @@ The pre-sales engine for technical B2B suppliers. Three doors in, one engine, ou
 - Engine: read the whole pack, extract every requirement, decide bid or no-bid per lot, match requirements to the company's evidence, draft answers and a priced quote, check every claim, ask a person to approve.
 - Outputs: the buyer's own response form filled in (DOCX), a requirement matrix with sources, per-lot verdicts, a priced quote (DOCX and XLSX), events to the team's tools, and a 24x7 agent you can chat with or reach over MCP.
 
-Built for the Nebius x NVIDIA hackathon, track Best Apps and Agents. Live: https://pactovio.pages.dev (landing, /pricing) and https://pactovio.pages.dev/app (the product; no sign-in, every visitor gets a capped judge session). Billing is Dodo Payments test mode. The app opens on a demo workspace for an electronics manufacturer built only from its public website and records; two fictional sample companies (Harbour Digital, Kestrel Sensing) are one switch away.
+Built for the Nebius x NVIDIA hackathon, track Best Apps and Agents. Hosted target: https://pactovio.pages.dev (landing, /pricing) and https://pactovio.pages.dev/app. Customer access in this version uses email-code signup/login, a private company workspace, resumable onboarding, customer evidence uploads and catalogue prices. Rollout requires the additive customer migration and configured email/Composio services; see [customer setup and API contract](apps/api/CUSTOMER-AUTH.md). Billing remains Dodo Payments test mode. Existing sample-company data is retained internally and is not available through customer sessions.
 
 **The product interface** (`apps/front/public`, plain HTML, CSS and ES modules on the live API, no build step):
 
@@ -18,7 +18,7 @@ Built for the Nebius x NVIDIA hackathon, track Best Apps and Agents. Live: https
 | Quotes | Design requests matched against datasheets (MET / PARTIAL / GAP with citations) and quote documents with DOCX export |
 | Agent | The 24x7 agent: streaming chat over WebSocket, tool calls, citations, approve / decline cards, proactive inbox |
 | Connections | 15 connectors by category with live status and a live event stream |
-| Evidence, Billing & usage, How it works, Pricing, Help | Evidence library; plans, checkout and session caps; in-app explanations |
+| Evidence, Catalogue, Company settings, Billing & usage, How it works, Pricing, Help | Upload and index company documents; enter product prices; resume/edit company setup; plans, test checkout and usage limits |
 
 ## How it works
 
@@ -76,9 +76,15 @@ Drafted answers are audited by NeMo Guardrails 0.24.1 running as a Nebius Server
 
 **Run on 30 Oct against production:** one job on Nebius (`cpu-d3`, 2 vCPU, python:3.12-slim, about 5 minutes including image pull and `pip install`) audited the 5 queued answers of the Met Eireann pack: 1 claim flagged by the regex rail, 1 unsupported by our check and NeMo's self check; red team 10 of 10 caught. The results are stored on the `audits` rows and returned by `GET /api/audits/{id}` and `/api/limits`. The finished job was deleted afterwards.
 
-## Judge mode and limits
+## Customer access and limits
 
-An anonymous cookie session is bound to a sample workspace. Per session: a pack run defaults to **replay** of a recorded live run (labelled `replay`, free, no model call; ask for `replay: false` to run fresh), 2 fresh runs, 3 Tavily buyer refreshes, 10 agent messages a minute. Globally: **one fresh pack run in flight at a time**, because the Token Factory quota (1,000 RPM, 2M TPM) is shared with other products. Tavily is capped at 25 live calls a day and 150 a month. `GET /api/limits` returns the real numbers read from `run_steps` and counters. Public-demo sessions cannot disconnect or edit rules on shared connections, but an API key can and a session can mint a key for its sample workspace; fine for a test-account demo, not for real accounts.
+Sign in or create an account with a six-digit email code. New customers receive an empty, private workspace and complete company setup before entering the app. Company details are saved between visits; evidence, products, requests, quotes, agent threads and connected accounts belong to that workspace. Customer cookies are opaque, hashed server-side, HttpOnly, Secure and revocable. Legacy anonymous sample cookies do not authenticate customer APIs.
+
+Per customer browser session: 2 fresh pack reads, 3 Tavily buyer refreshes and 10 agent messages a minute. Globally: one fresh pack run in flight, Tavily 25/day and 150/month, and a hard **$0.25/day model spend cap** with a kill switch. Budget exhaustion is an error, not a fabricated answer. New customer workspaces have no recorded replays. Scheduled scans exclude retained samples and customers whose setup is incomplete. `GET /api/limits` returns the current counters and budget.
+
+Each customer connects their own tools through Composio. The project callback verifier must be configured before production customer connections are enabled; credentials and shared demo accounts are never adopted into customer workspaces. See [configuration, migration and verification](apps/api/CUSTOMER-AUTH.md).
+
+Catalogue entry currently supports 26 currencies with two decimal minor units; unsupported currency formats are rejected. Customers supply their own prices and datasheets. Quotes without configured tax rules exclude tax and require supplier confirmation of applicable taxes and commercial terms.
 
 ## Cost of one pack read (measured, not projected)
 
@@ -175,7 +181,7 @@ The real tender packs are public documents from eTenders, TED and Find a Tender.
 - Scanned PDFs without a text layer are rejected on evidence upload (upload PNG or JPG); PDF image pages are not rendered to PNG for the vision step.
 - Form fill covers table rows keyed by reference number; free-form content controls are untouched.
 - Embeddings are slow on the shared link (about 25 s a request), noticeable on evidence upload.
-- Per-visitor agent inboxes: all judges on a sample workspace share its AgentHub inbox.
+- Paid customer billing is not enabled: Dodo checkout remains test mode. Production customer rollout needs verified email delivery, the customer migration and the Composio callback verifier.
 
 ## Sample data
 

@@ -60,13 +60,14 @@ export async function render(root, _params, ctx) {
   const approvals = t.approvals || [];
   const runs = t.recent_runs || [];
   body.replaceChildren(
+    !intakes.length && !runs.length && !matches.length ? h('section.card.workspace-start', h('span.access-step', 'YOUR WORKSPACE IS READY'), h('h2.h3', 'Start with what you know'), h('p.small.ink2', 'Add your company evidence, then bring in a tender or request. Pactovio uses the information you provide; your new workspace starts without sample documents or invented claims.'), h('div.workspace-start-actions', h('a.btn.btn-primary', { href: '#/evidence' }, icon('evidence'), 'Add company evidence'), h('a.btn.btn-secondary', { href: '#/inbox/new' }, icon('inbox'), 'Add a request'), h('a.btn.btn-ghost', { href: '#/connections' }, icon('plug'), 'Connect a mailbox'))) : null,
     h('div.grid.g4.wk-stats', stat('New matches', c.new_matches, '#/tenders'), stat('Open intakes', c.open_intakes, '#/inbox'), stat('Approvals waiting', c.approvals_pending, '#/agent', approvals.length ? 'Drafted answers' : null), stat('Runs today', c.runs_today, matches[0] ? `#/tenders/${encodeURIComponent(matches[0].tender.id)}` : '#/tenders')),
     h('div.wk-two',
       h('div',
         sectionTitle('Top matches', h('a.small.muted', { href: '#/tenders' }, 'All tenders')),
         h('div.card.wk-list', matches.length ? matches.map(matchRow) : empty('No matches yet', 'The nightly scan reads new tenders from TED, eTenders and Find a Tender and scores them against your profile.')),
         sectionTitle('Latest in the inbox', h('a.small.muted', { href: '#/inbox' }, 'Open inbox')),
-        h('div.card.wk-list', intakes.length ? intakes.slice(0, 6).map(intakeRow) : empty('Inbox is quiet', 'Connect Gmail or forward an RFQ and Pactovio classifies it in seconds.'))),
+        h('div.card.wk-list', intakes.length ? intakes.slice(0, 6).map(intakeRow) : empty('Inbox is quiet', 'Add a request manually or connect your mailbox to start receiving work.'))),
       h('div',
         sectionTitle('Needs your approval', approvals.length ? h('span.chip.warn', String(approvals.length)) : null),
         h('div.wk-appr-list', approvals.length ? approvals.slice(0, 6).map(approvalRow) : h('div.card', empty('Nothing waiting', 'Drafted answers and agent actions appear here before anything is sent.'))),

@@ -77,6 +77,13 @@ export async function matchDesignRequest(env: Env, designRequestId: string, o: M
   if (!spec) throw new HttpError(400, 'Design request has no specification text', 'validation');
   const base = { env, onStep: o.onStep, fetch: o.fetch, signal: o.signal };
 
+  // Check customer setup before any paid model request.
+  const prows = (await db.prepare('SELECT id, sku, name, unit_price_minor, currency, specs_json FROM products WHERE workspace_id = ?').bind(ws).all<Record<string, unknown>>()).results;
+  if (!prows.length) throw new HttpError(409, 'Add your products and prices in Catalogue before matching a design request.', 'catalogue_required');
+  const products = prows.map((p) => ({ id: String(p.id), sku: String(p.sku), name: String(p.name), specs: JSON.parse(String(p.specs_json ?? '{}')) as { unit?: string } }));
+  const crows = (await db.prepare("SELECT c.id, c.text, c.embedding_json, e.title, e.meta_json FROM evidence_chunks c JOIN evidence e ON e.id = c.evidence_id WHERE c.workspace_id = ? AND e.kind = 'datasheet' ORDER BY e.id, c.seq").bind(ws).all<Record<string, unknown>>()).results;
+  if (!crows.length) throw new HttpError(409, 'Upload your product datasheets in Evidence before matching a design request.', 'datasheets_required');
+
   const { data: ex } = await chatJSON(Extracted, {
     ...base, role: 'reason', purpose: 'extract requirements', schemaName: 'requirements', temperature: 0, maxTokens: 8000,
     messages: [
@@ -86,10 +93,6 @@ export async function matchDesignRequest(env: Env, designRequestId: string, o: M
   });
   const requirements = uniqueKeys(ex.requirements).map((r) => ({ key: r.key, text: r.text, mandatory: r.mandatory, ...(r.value ? { value: r.value } : {}) }));
 
-  const prows = (await db.prepare('SELECT id, sku, name, unit_price_minor, currency, specs_json FROM products WHERE workspace_id = ?').bind(ws).all<Record<string, unknown>>()).results;
-  const products = prows.map((p) => ({ id: String(p.id), sku: String(p.sku), name: String(p.name), specs: JSON.parse(String(p.specs_json ?? '{}')) as { unit?: string } }));
-  const crows = (await db.prepare("SELECT c.id, c.text, c.embedding_json, e.title, e.meta_json FROM evidence_chunks c JOIN evidence e ON e.id = c.evidence_id WHERE c.workspace_id = ? AND e.kind = 'datasheet' ORDER BY e.id, c.seq").bind(ws).all<Record<string, unknown>>()).results;
-  if (!crows.length) throw new HttpError(409, 'No datasheet chunks for this workspace; run the sample seed', 'conflict');
   const chunks = crows.map((c) => {
     const meta = JSON.parse(String(c.meta_json ?? '{}')) as { doc_id?: string | null };
     return { id: String(c.id), text: String(c.text), title: String(c.title), docId: meta.doc_id ?? null, emb: c.embedding_json ? (JSON.parse(String(c.embedding_json)) as number[]) : null };

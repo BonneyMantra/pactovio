@@ -2,17 +2,20 @@
 
 export async function api(path, opts = {}) {
   const init = { credentials: 'same-origin', headers: { accept: 'application/json' }, ...opts };
-  if (opts.body && typeof opts.body !== 'string') {
+  if (opts.body && typeof opts.body !== 'string' && !(opts.body instanceof FormData)) {
     init.body = JSON.stringify(opts.body);
     init.headers = { ...init.headers, 'content-type': 'application/json' };
   }
-  const res = await fetch(`/api${path}`, init);
+  const bounded = /^\/(auth(?:\/|$)|session$|onboarding(?:\/|$))/.test(path);
+  const res = await fetch(`/api${path}`, { ...init, signal: init.signal || (bounded ? AbortSignal.timeout(30000) : undefined) });
   const text = await res.text();
   let data = null;
   try { data = text ? JSON.parse(text) : null; } catch { data = { error: text }; }
   if (!res.ok) {
     const err = new Error((data && data.error) || `Request failed (${res.status})`);
     err.status = res.status; err.code = data && data.code;
+    err.retryAfter = Number(res.headers.get('retry-after') || data?.retry_after || 0);
+    if (res.status === 401 && path !== '/session' && !path.startsWith('/auth/')) window.dispatchEvent(new Event('pv:session-expired'));
     throw err;
   }
   return data;

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { Iso, Json, PlanId } from './common';
+import { CustomerIdentity } from './customer';
 import { Workspace } from './entities-company';
 import { ConnectorRule } from './entities-ops';
 import {
@@ -15,6 +16,9 @@ export const Health = z.object({
 });
 
 export const SessionInfo = z.object({
+  authenticated: z.literal(true),
+  user: CustomerIdentity,
+  onboarding_complete: z.boolean(),
   session_id: z.string(),
   workspace_id: z.string(),
   workspace: Workspace,

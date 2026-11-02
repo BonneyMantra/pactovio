@@ -1,5 +1,6 @@
 // Evidence library: certificates, datasheets, company facts. Everything an answer or gate is allowed to cite.
 import { api, h, icon, fmt, empty, errorBox, skeleton } from '../ui.js';
+import { evidenceUpload } from '../evidence-upload.js';
 import { dash, tabs } from './work-kit.js';
 
 const KIND = { certificate: 'Certificates', datasheet: 'Datasheets', profile: 'Company', capability: 'Capabilities', financial: 'Financials', reference: 'References', insurance: 'Insurance', policy: 'Policies', case_study: 'Case studies', cv: 'CVs' };
@@ -26,19 +27,26 @@ function card(e) {
 
 export async function render(root, _params, ctx) {
   ctx.setCrumbs('Evidence');
-  root.append(h('div.page-head', h('div', h('h1.title', 'Evidence'), h('div.sub', 'The only facts Pactovio may cite. A claim without evidence here is struck from every draft.'))));
+  const upload = evidenceUpload(async () => { active = 'all'; await refresh(); }, () => refresh());
+  root.append(h('div.page-head', h('div', h('h1.title', 'Evidence'), h('div.sub', 'The company documents Pactovio can cite in matching and drafts.')),
+    h('button.btn.btn-primary', { onclick: () => { upload.element.scrollIntoView({ behavior: 'smooth', block: 'start' }); upload.focus(); } }, icon('clip'), 'Upload evidence')), upload.element);
   const bar = h('div');
   const grid = h('div.wk-evgrid');
   root.append(bar, grid);
   grid.append(skeleton(6));
-  let items = [];
-  try { items = (await api('/evidence?limit=200')).items || []; } catch (e) { grid.replaceChildren(errorBox(e)); return; }
-  const kinds = [...new Set(items.map((e) => e.kind).filter(Boolean))].sort((a, b) => (a === 'certificate' ? -1 : b === 'certificate' ? 1 : a.localeCompare(b)));
-  let active = 'all';
+  let items = [], kinds = [], active = 'all', disposed = false;
+  async function refresh() {
+    grid.replaceChildren(skeleton(4));
+    try {
+      const result = await api('/evidence?limit=200'); if (disposed) return;
+      items = result.items || []; kinds = [...new Set(items.map((e) => e.kind).filter(Boolean))].sort(); draw();
+    } catch (error) { if (!disposed) grid.replaceChildren(errorBox(error), h('button.btn.btn-secondary', { onclick: refresh }, 'Retry evidence list')); }
+  }
   const draw = () => {
     bar.replaceChildren(tabs([{ id: 'all', label: 'All', count: items.length }, ...kinds.map((k) => ({ id: k, label: KIND[k] || nice(k), count: items.filter((e) => e.kind === k).length }))], active, (id) => { active = id; draw(); }));
     const shown = items.filter((e) => active === 'all' || e.kind === active);
     grid.replaceChildren(...(shown.length ? shown.map(card) : [empty('No evidence yet', 'Upload certificates, datasheets and references; Pactovio reads and indexes them.')]));
   };
-  draw();
+  await refresh();
+  return () => { disposed = true; upload.dispose(); };
 }
