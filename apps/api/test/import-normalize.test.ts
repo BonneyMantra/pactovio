@@ -28,7 +28,10 @@ describe('real model contract with transport fixtures, never live spend',()=>{
  const j=await staged();const spy=vi.spyOn(globalThis,'fetch').mockResolvedValue(new Response(JSON.stringify({error:{message:'private-auth-detail-never-return',type:'authentication_error'}}),{status:401,headers:{'content-type':'application/json'}}));
  const r=await f.call(`/imports/${j.id}/normalize`,{revision:0});expect(r.status).toBe(503);const text=await r.text();expect(text).toContain('normalization_auth_rejected');expect(text).not.toContain('private-auth-detail');expect(spy).toHaveBeenCalledTimes(1);expect(await(await f.call(`/imports/${j.id}`)).json()).toMatchObject({state:'staged',revision:0});
  });
- it('rejects a fabricated source column without claiming normalization or changing staging',async()=>{
- const j=await staged();model(content('invented purchase cost'));const r=await f.call(`/imports/${j.id}/normalize`,{revision:0});expect(r.status).toBe(503);const text=await r.text();expect(text).toContain('normalization_unavailable');expect(text).not.toContain('invented');expect(await (await f.call(`/imports/${j.id}`)).json()).toMatchObject({revision:0,state:'staged'});
+ it('never applies a fabricated source column: drops it, asks for that field and keeps grounded matches',async()=>{
+const j=await staged();model(content('invented purchase cost'));const r=await f.call(`/imports/${j.id}/normalize`,{revision:0});expect(r.status).toBe(200);const text=await r.text();expect(text).not.toContain('invented');const out=JSON.parse(text);expect(out.mapping.cost).toBeUndefined();expect(out.mapping.price).toBe('Customer price INR');expect(out.questions.some((q:any)=>q.field==='cost')).toBe(true);expect(await (await f.call(`/imports/${j.id}`)).json()).toMatchObject({state:'staged'});
+ });
+ it('fails closed with a specific code when no suggested column exists in the source',async()=>{
+const j=await staged();const d=content('invented purchase cost');d.suggestions[1].source_field='invented price';model(d);const r=await f.call(`/imports/${j.id}/normalize`,{revision:0});expect(r.status).toBe(503);const text=await r.text();expect(text).toContain('normalization_ungrounded');expect(text).not.toContain('invented');expect(await (await f.call(`/imports/${j.id}`)).json()).toMatchObject({revision:0,state:'staged'});
  });
 });
