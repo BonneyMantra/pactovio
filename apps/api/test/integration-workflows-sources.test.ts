@@ -60,7 +60,7 @@ describe('source schema to persisted import protocol', () => {
       const sheet = adapter === 'googlesheets';
       const mapping = { external_id: '_source_id', sku: sheet ? 'column_1' : 'sku', name: sheet ? 'column_2' : 'name',
         price: sheet ? 'column_3' : 'rate', price_format: 'decimal', ...(sheet ? { currency: 'column_4' } : { confirmed_currency: 'MYR' }) };
-      const frozenRes = await f.call(`/imports/${job.id}/preview`, { revision: 1, mapping, selected_ids: [rows.items[0].external_id] });
+      const frozenRes = await f.call(`/imports/${job.id}/preview`, { revision: 1, mapping, selected_ids: [rows.items[0].external_id],resolutions:[{external_id:rows.items[0].external_id,product:{description:'Calibrated field laser fixture',unit:'piece',internal_unit_cost_minor:750,cost_currency:'MYR',cost_unit:'piece'}}] });
       expect(frozenRes.status).toBe(200); const frozen = await frozenRes.json() as any;
       expect(frozen.preview.rows[0].unresolved).toEqual([]);
       const approved = await f.call(`/imports/${job.id}/approve`, { revision: frozen.revision, preview_hash: frozen.preview_hash, idempotency_key: crypto.randomUUID() });

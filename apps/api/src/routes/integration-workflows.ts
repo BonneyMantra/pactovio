@@ -12,6 +12,7 @@ import { Slug, Id, ApproveInput, PreviewInput, RevisionInput, TableInput } from 
 import { SelectInput, jobStatus, readJob, selectedJob, stagedRows, tabularJob } from '../lib/integration-jobs';
 import { freezePreview } from '../lib/integration-preview';
 import { approvePreview } from '../lib/integration-approve';
+import { normalizeImport } from '../lib/integration-normalize';
 export const UNIVERSAL_OAUTH_COOKIE = 'pv_integration_oauth';
 async function body(c: Context<AppEnv>): Promise<unknown> {
   if (!c.req.header('content-type')?.toLowerCase().startsWith('application/json')) throw new HttpError(400, 'Send a JSON request body.', 'validation');
@@ -88,3 +89,5 @@ for (const action of ['read', 'resume']) routes.post(`/imports/:id/${action}`, a
 });
 routes.post('/imports/:id/preview', async c => c.json(await freezePreview(c.env, c.get('auth').workspaceId, Id.parse(c.req.param('id')), PreviewInput.parse(await body(c)))));
 routes.post('/imports/:id/approve', async c => c.json(await approvePreview(c.env, c.get('auth').workspaceId, Id.parse(c.req.param('id')), ApproveInput.parse(await body(c)), c.get('auth').sessionId!)));
+
+routes.post('/imports/:id/normalize', async c => { const input=RevisionInput.parse(await body(c)); return c.json(await normalizeImport(c.env,c.get('auth').workspaceId,Id.parse(c.req.param('id')),input.revision)); });

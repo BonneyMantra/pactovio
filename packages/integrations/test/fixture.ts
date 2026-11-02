@@ -7,8 +7,8 @@ import { customerFixture } from '../../../apps/api/test/customer-fixture';
 import { pins, type Adapter } from '../../../apps/api/src/lib/integration-bindings';
 import { workspaceUser } from '../../../apps/api/src/lib/integration-connections';
 import { randomToken } from '../../../apps/api/src/lib/db';
-export const mapping = { external_id: '_source_id', sku: 'sku', name: 'name', price: 'price', currency: 'currency', price_format: 'decimal' };
-export const product = (external_id = 'meridian-laser', sku = 'ML-100', price: string | number = '12.34') => ({ external_id, sku, name: 'Meridian laser level', price, currency: 'MYR' });
+export const mapping = { external_id: '_source_id', sku: 'sku', name: 'name', price: 'price', currency: 'currency', price_format: 'decimal', description:'description',unit:'unit',cost:'cost',cost_currency:'cost_currency',cost_unit:'cost_unit' };
+export const product = (external_id = 'meridian-laser', sku = 'ML-100', price: string | number = '12.34') => ({ external_id, sku, name: 'Meridian laser level', price, currency: 'MYR',description:'Battery-powered field laser with calibration reference',unit:'piece',cost:'7.50',cost_currency:'MYR',cost_unit:'piece' });
 export const metadata = (slug: string) => ({ slug, name: slug, type: 'native', auth_schemes: ['OAUTH2'], composio_managed_auth_schemes: ['OAUTH2'], auth_config_details: [] });
 export const tool = (adapter: Adapter) => ({ slug: pins[adapter].slug, name: adapter, version: pins[adapter].version,
   toolkit: { slug: adapter }, input_parameters: pins[adapter].input, output_parameters: pins[adapter].output,

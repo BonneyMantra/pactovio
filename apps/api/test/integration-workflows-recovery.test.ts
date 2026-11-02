@@ -43,7 +43,7 @@ describe('persisted checkpoints, permissions and conflict recovery', () => {
     const page = await f.call(`/imports/${job.id}/resume`, { revision: 0 }); expect(page.status).toBe(200);
     expect(await page.json()).toMatchObject({ staged: 50, exhausted: false, revision: 1 });
     const frozen = await (await f.call(`/imports/${job.id}/preview`, { revision: 1, selected_ids: ['source-0'],
-      mapping: { external_id: '_source_id', sku: 'sku', name: 'name', price: 'rate', confirmed_currency: 'MYR', price_format: 'decimal' } })).json() as any;
+      resolutions:[{external_id:'source-0',product:{description:'Calibrated field laser fixture',unit:'piece',internal_unit_cost_minor:750,cost_currency:'MYR',cost_unit:'piece'}}],mapping: { external_id: '_source_id', sku: 'sku', name: 'name', price: 'rate', confirmed_currency: 'MYR', price_format: 'decimal' } })).json() as any;
     expect((await f.call(`/imports/${job.id}/approve`, { revision: frozen.revision, preview_hash: frozen.preview_hash, idempotency_key: crypto.randomUUID() })).status).toBe(200);
     const partial = await (await f.call(`/imports/${job.id}`)).json() as any;
     expect(partial).toMatchObject({ state: 'partial', staged: 50, applied: 1, exhausted: false });

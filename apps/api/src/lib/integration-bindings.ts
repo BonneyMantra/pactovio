@@ -18,7 +18,8 @@ export const selections = {
   hubspot: selected({ scope }),
   salesforce: selected({ pricebook_id: z.string().regex(/^[a-zA-Z0-9]{15}(?:[a-zA-Z0-9]{3})?$/) }),
   pipedrive: selected({ scope }),
-  googlesheets: selected({ spreadsheet_id: ref, range: a1 }), googledrive: selected({ spreadsheet_id: ref, range: a1 }),
+  googlesheets: selected({ spreadsheet_id: ref, range: a1, header_row: z.boolean().optional(), identity_column: ref.optional() }),
+  googledrive: selected({ spreadsheet_id: ref, range: a1, header_row: z.boolean().optional(), identity_column: ref.optional() }),
   excel: selected({ drive_id: ref, item_id: ref, table_id: ref }),
   airtable: selected({ baseId: z.string().regex(/^app[A-Za-z0-9]{14}$/), tableIdOrName: ref }),
   notion: selected({ database_id: z.string().regex(/^(?:[a-f0-9]{32}|[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12})$/i) }),
@@ -45,7 +46,7 @@ export function readArguments(adapter: Adapter, resource: unknown, cursor: unkno
     case 'hubspot': return { limit: 50, properties: ['name', 'hs_sku', 'price'], archived: false, ...(c ? { after: String(c) } : {}) };
     case 'salesforce': return { query: `SELECT Id,Product2.Name,Product2.ProductCode,UnitPrice,CurrencyIsoCode,SystemModstamp FROM PricebookEntry WHERE Pricebook2Id = '${r.pricebook_id}' AND IsActive = true ORDER BY Id LIMIT 50 OFFSET ${c ?? 0}` };
     case 'pipedrive': return { limit: 50, start: c ?? 0 };
-    case 'googlesheets': case 'googledrive': return { ...r, major_dimension: 'ROWS', value_render_option: 'UNFORMATTED_VALUE' };
+    case 'googlesheets': case 'googledrive': return { spreadsheet_id: r.spreadsheet_id, range: r.range, major_dimension: 'ROWS', value_render_option: 'UNFORMATTED_VALUE' };
     case 'excel': return { ...r, top: 50, skip: c ?? 0 };
     case 'airtable': return { ...r, pageSize: 50, ...(c ? { offset: c } : {}) };
     case 'notion': return { ...r, page_size: 50, ...(c ? { start_cursor: c } : {}) };

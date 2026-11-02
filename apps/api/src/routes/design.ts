@@ -1,6 +1,6 @@
 import { chargeCredits, CREDIT_COSTS, refundCredits } from '@pactovio/billing';
 import { endpoints, HttpError, newId, type DesignRequest, type Product } from '@pactovio/contracts';
-import { createQuote, matchDesignRequest, saveProduct, startRun } from '@pactovio/quote';
+import { createQuote, matchDesignRequest, saveProduct, listProducts, startRun } from '@pactovio/quote';
 import { one, rows } from '../lib/db';
 import type { Register } from '../lib/router';
 
@@ -38,7 +38,7 @@ export const register: Register = (r) => {
       buyer: { country: body.buyer_country, b2b: body.b2b, vat_registered: body.vat_registered },
     }));
   r.on(endpoints.listProducts, async ({ db, workspaceId }) => ({
-    items: await rows<Product>(db, 'SELECT * FROM products WHERE workspace_id = ? ORDER BY family, sku', workspaceId),
+    items: await listProducts(db, workspaceId),
   }));
   r.on(endpoints.createProduct, async ({ db, workspaceId, body }) => saveProduct(db, workspaceId, body));
   r.on(endpoints.updateProduct, async ({ db, workspaceId, body, params }) => saveProduct(db, workspaceId, body, params.id));

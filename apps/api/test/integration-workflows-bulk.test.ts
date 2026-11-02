@@ -54,6 +54,7 @@ describe('complete catalogue imports in bounded approval batches', () => {
     expect((await f.call(`/imports/${job.id}/read`, { revision: job.revision })).status).toBe(409);
     const frozenResult = await f.call(`/imports/${job.id}/preview`, { revision: job.revision,
       selected_ids: Array.from({ length: 100 }, (_, i) => ids(i)),
+      resolutions:Array.from({length:100},(_,i)=>({external_id:ids(i),product:{description:'Calibrated field instrument fixture',unit:'piece',internal_unit_cost_minor:750,cost_currency:'MYR',cost_unit:'piece'}})),
       mapping: { external_id: '_source_id', name: 'name', sku: 'sku', price: 'rate', price_format: 'decimal', confirmed_currency: 'MYR' } });
     expect(frozenResult.status).toBe(200); const frozen = await frozenResult.json() as any;
     const approved = await f.call(`/imports/${job.id}/approve`, { revision: frozen.revision, preview_hash: frozen.preview_hash, idempotency_key: crypto.randomUUID() });

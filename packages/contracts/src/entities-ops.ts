@@ -37,6 +37,11 @@ export const Product = z.object({
   datasheet_doc_id: z.string().nullable(),
   unit_price_minor: Minor,
   currency: z.string(),
+  description: z.string().nullable().optional(),
+  internal_unit_cost_minor: Minor.nullable().optional(),
+  cost_currency: z.string().nullable().optional(),
+  cost_unit: z.string().nullable().optional(),
+  zero_cost_confirmed: z.number().nullable().optional(),
 });
 export type Product = z.infer<typeof Product>;
 

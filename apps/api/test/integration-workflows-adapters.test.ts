@@ -19,8 +19,8 @@ describe('explicit version-bound read capabilities', () => {
     expect(selections[adapter].safeParse({ ...resources[adapter], query: 'DELETE everything' }).success).toBe(false);
   });
   it('validates exact currency/decimal/minor amounts without rounding or invented zeros', () => {
-    for (const [value, expected] of [['0', 0], ['0.29', 29], ['999.99', 99999], [12.34, 1234], ['10000000000', 1000000000000]] as const) expect(priceMinor(value, 'decimal')).toBe(expected);
-    for (const value of ['', null, undefined, '1.005', '1e3', '-1', 'NaN', '1,000.00', '10000000000.01', true]) expect(priceMinor(value, 'decimal')).toBeNull();
+    for (const [value, expected] of [['0', 0], ['0.29', 29], ['999.99', 99999], ['1,000.00',100000], ['1,25,000.00',12500000], [12.34, 1234], ['10000000000', 1000000000000]] as const) expect(priceMinor(value, 'decimal')).toBe(expected);
+    for (const value of ['', null, undefined, '1.005', '1e3', '-1', 'NaN', '12,50.00', '10000000000.01', true]) expect(priceMinor(value, 'decimal')).toBeNull();
     expect(priceMinor('1234', 'minor')).toBe(1234); expect(priceMinor('12.34', 'minor')).toBeNull();
   });
   it('rejects excessive ranges, dynamic queries and unselected resource scope', () => {

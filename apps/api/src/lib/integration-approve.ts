@@ -28,16 +28,23 @@ function rowWrites(env: Env, job: ImportJob, preview: Frozen, token: string) {
     [rows, job.id, job.workspace_id, job.workspace_id, preview.source_key, job.workspace_id, preview.source_key]),
     env.DB.prepare(`INSERT INTO products(id,workspace_id,sku,name,family,specs_json,unit_price_minor,currency)
       SELECT json_extract(r.value,'$.target_id'),?,json_extract(r.value,'$.product.sku'),json_extract(r.value,'$.product.name'),
-        json_extract(r.value,'$.product.family'),json_object('unit',json_extract(r.value,'$.product.unit'),'price_basis','Approved source import'),
+        json_extract(r.value,'$.product.family'),json_object('unit',json_extract(r.value,'$.product.unit'),'description',json_extract(r.value,'$.product.description'),'zero_price_confirmed',json_extract(r.value,'$.product.zero_price_confirmed'),'sku_origin',CASE WHEN json_extract(r.value,'$.field_sources.sku.origin')='internal_reference' THEN 'internal_reference' ELSE 'manufacturer' END,'features',json_extract(r.value,'$.source_record.features'),'technical_specs',json_extract(r.value,'$.source_record.technical_specs'),'price_basis','Approved source import'),
         json_extract(r.value,'$.product.unit_price_minor'),json_extract(r.value,'$.product.currency') FROM json_each(?) r
       WHERE json_extract(r.value,'$.expected_revision') IS NULL`).bind(job.workspace_id, rows),
     env.DB.prepare(`UPDATE products SET (sku,name,family,specs_json,unit_price_minor,currency)=(
       SELECT json_extract(r.value,'$.product.sku'),json_extract(r.value,'$.product.name'),json_extract(r.value,'$.product.family'),
-        json_patch(products.specs_json,json_object('unit',json_extract(r.value,'$.product.unit'),'price_basis','Approved source import')),
+        json_patch(products.specs_json,json_object('unit',json_extract(r.value,'$.product.unit'),'description',json_extract(r.value,'$.product.description'),'zero_price_confirmed',json_extract(r.value,'$.product.zero_price_confirmed'),'sku_origin',CASE WHEN json_extract(r.value,'$.field_sources.sku.origin')='internal_reference' THEN 'internal_reference' ELSE 'manufacturer' END,'features',json_extract(r.value,'$.source_record.features'),'technical_specs',json_extract(r.value,'$.source_record.technical_specs'),'price_basis','Approved source import')),
         json_extract(r.value,'$.product.unit_price_minor'),json_extract(r.value,'$.product.currency') FROM json_each(?) r
         WHERE json_extract(r.value,'$.target_id')=products.id)
       WHERE workspace_id=? AND id IN (SELECT json_extract(value,'$.target_id') FROM json_each(?) WHERE json_extract(value,'$.expected_revision') IS NOT NULL)`)
       .bind(rows, job.workspace_id, rows),
+    env.DB.prepare(`INSERT INTO product_costs(product_id,workspace_id,internal_unit_cost_minor,cost_currency,cost_unit,zero_cost_confirmed,updated_at)
+      SELECT json_extract(r.value,'$.target_id'),?,json_extract(r.value,'$.product.internal_unit_cost_minor'),
+        json_extract(r.value,'$.product.cost_currency'),json_extract(r.value,'$.product.cost_unit'),
+        COALESCE(json_extract(r.value,'$.product.zero_cost_confirmed'),0),? FROM json_each(?) r WHERE 1
+      ON CONFLICT(product_id) DO UPDATE SET internal_unit_cost_minor=excluded.internal_unit_cost_minor,cost_currency=excluded.cost_currency,
+        cost_unit=excluded.cost_unit,zero_cost_confirmed=excluded.zero_cost_confirmed,updated_at=excluded.updated_at`)
+      .bind(job.workspace_id, new Date().toISOString(), rows),
     env.DB.prepare(`INSERT INTO integration_provenance(workspace_id,source_key,external_id,toolkit,account_id,resource_json,source_version,
       retrieved_at,product_id,product_revision,resolution_json,preview_hash,job_id)
       SELECT ?,?,json_extract(r.value,'$.external_id'),?,?,?,json_extract(r.value,'$.source_version'),json_extract(r.value,'$.retrieved_at'),

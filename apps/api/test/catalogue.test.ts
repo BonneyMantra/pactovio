@@ -8,7 +8,7 @@ let env: Env, dispose: () => Promise<void>;
 let owner: Awaited<ReturnType<typeof customerFixture>>, other: typeof owner;
 const { app } = buildApp();
 const context = { waitUntil: () => undefined, passThroughOnException: () => undefined } as unknown as ExecutionContext;
-const input = { sku: 'SEA-40', name: 'Coastal monitoring sensor', unit_price_minor: 120029, currency: 'MYR', unit: 'each' };
+const input = { sku: 'SEA-40', name: 'Coastal monitoring sensor', unit_price_minor: 120029, currency: 'MYR', unit: 'each', description:'Outdoor sensor for coastal and environmental monitoring',internal_unit_cost_minor:7500,cost_currency:'MYR',cost_unit:'each' };
 const call = (path: string, cookie: string, body?: unknown, method = body === undefined ? 'GET' : 'POST') =>
   app.fetch(new Request(`http://localhost/api${path}`, { method,
     headers: { cookie, origin: 'http://localhost', 'content-type': 'application/json' },

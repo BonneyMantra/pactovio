@@ -4,7 +4,7 @@ let f: Awaited<ReturnType<typeof fixture>>;
 beforeAll(async () => { f = await fixture(); }, 60000);
 afterEach(() => vi.restoreAllMocks());
 afterAll(async () => f.dispose());
-async function table(rows = [product()], resource = crypto.randomUUID()) {
+async function table(rows: Record<string,unknown>[] = [product()], resource = crypto.randomUUID()) {
   const res = await f.call('/imports/tabular', { rows, resource, external_id_field: 'external_id' });
   expect(res.status).toBe(201); return res.json() as Promise<any>;
 }
@@ -53,10 +53,10 @@ describe('private staged import and exact approval', () => {
     const row = { external_id: 'meridian-laser', sku: '', name: '', price: '1.005', currency: 'JPY' };
     const job = await table([row]), frozen = await preview(job);
     expect(frozen.preview.rows[0].product).toBeNull();
-    expect(frozen.preview.rows[0].unresolved.sort()).toEqual(['currency', 'name', 'sku', 'unit_price_minor'].sort());
+    expect(frozen.preview.rows[0].unresolved.sort()).toEqual(['currency', 'name', 'unit_price_minor','description','unit','internal_unit_cost_minor','cost_currency','cost_unit'].sort());
     expect((await f.call(`/imports/${job.id}/approve`, approval(frozen))).status).toBe(409);
     const resolved = await preview(frozen, { resolutions: [{ external_id: row.external_id, product: {
-      sku: 'ML-RESOLVED', name: 'Meridian laser level', unit_price_minor: 29, currency: 'MYR' } }] });
+      sku: 'ML-RESOLVED', name: 'Meridian laser level', unit_price_minor: 29, currency: 'MYR',description:'Calibrated field laser for level measurement',unit:'piece',internal_unit_cost_minor:15,cost_currency:'MYR',cost_unit:'piece' } }] });
     expect(resolved.preview.rows[0].product.unit_price_minor).toBe(29);
     expect((await f.call(`/imports/${job.id}/approve`, approval(resolved))).status).toBe(200);
     expect(JSON.parse((await f.env.DB.prepare('SELECT resolution_json FROM integration_provenance WHERE job_id=?').bind(job.id).first<any>())!.resolution_json)).toMatchObject({ unit_price_minor: 29 });

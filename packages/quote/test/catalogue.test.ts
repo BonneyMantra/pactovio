@@ -9,7 +9,7 @@ import { loadRules } from '../src/rules';
 let env: Env;
 let dispose: () => Promise<void>;
 const a = 'ws_customer_catalogue_a', b = 'ws_customer_catalogue_b';
-const input = { sku: 'env-40', name: 'Outdoor environmental sensor', unit_price_minor: 12500, currency: 'eur', unit: 'each' };
+const input = { sku: 'env-40', name: 'Outdoor environmental sensor', unit_price_minor: 12500, currency: 'eur', unit: 'each', description:'Outdoor sensor for coastal and environmental monitoring',internal_unit_cost_minor:7500,cost_currency:'MYR',cost_unit:'each' };
 
 beforeAll(async () => {
   ({ env, dispose } = await makeEnv());

@@ -5,6 +5,7 @@ import { type Adapter, pins, bindingIssue, schemaShape, readArguments, flattenRe
 import { canonical, matchesSchema } from './integration-schema';
 import { integrationClient } from './integration-provider';
 import { unavailable } from './integration-input';
+import { decodeHeaderSheet } from './integration-sheet';
 import { workspaceUser, type Connection, verifiedAccount } from './integration-connections';
 const Tool = z.object({ slug: z.string(), version: z.string(), toolkit: z.object({ slug: z.string() }),
   input_parameters: z.record(z.string(), z.unknown()), output_parameters: z.record(z.string(), z.unknown()),
@@ -30,7 +31,7 @@ const sourceId = (v: unknown) => typeof v === 'string' && v.length > 0 && v.leng
 const cursorValue = (v: unknown): string | number | null => v == null || v === '' ? null
   : typeof v === 'string' && v.length <= 4096 || typeof v === 'number' && Number.isSafeInteger(v) && v >= 0 ? v : malformed();
 export interface SourceRow { external_id: string; source_version: string | null; record: Record<string, string | number | boolean | null> }
-export function decodePage(adapter: Adapter, data: any, cursor: unknown): { rows: SourceRow[]; next: string | number | null; exhausted: boolean } {
+export function decodePage(adapter: Adapter, data: any, cursor: unknown, resource?: unknown): { rows: SourceRow[]; next: string | number | null; exhausted: boolean } {
   if (!data || typeof data !== 'object' || Array.isArray(data)) malformed();
   if (data.errors?.length || data.numErrors > 0 || data.success === false || data.code !== undefined && data.code !== 0) {
     throw new HttpError(502, 'Some selected source records could not be read. Retry or narrow the selection.', 'source_partial');
@@ -68,6 +69,7 @@ export function decodePage(adapter: Adapter, data: any, cursor: unknown): { rows
     case 'erpnext': records = [data.message]; break;
   }
   if (next !== null && (next === cursor || records.length === 0)) malformed();
+  if (['googlesheets','googledrive'].includes(adapter) && (resource as {header_row?: boolean})?.header_row) return { rows: decodeHeaderSheet(records, resource), next: null, exhausted: true };
   const rows: SourceRow[] = [];
   for (const [index, record] of records.entries()) {
     if (!record || typeof record !== 'object') malformed();
@@ -109,5 +111,5 @@ export async function readSelected(env: Env, connection: Connection, adapter: Ad
   if (response.successful !== true) throw new HttpError(502, 'The selected source read failed. Retry to continue.', 'source_read_failed');
   const safe = { data: response.data, successful: true, ...(typeof response.error === 'string' ? { error: response.error } : {}) };
   if (!matchesSchema(safe, pins[adapter].output)) malformed();
-  return decodePage(adapter, response.data, cursor);
+  return decodePage(adapter, response.data, cursor, resource);
 }
