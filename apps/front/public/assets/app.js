@@ -82,7 +82,7 @@ function renderSide(active) {
     h('span.avatar', initials(ws?.name)),
     h('div', { style: { minWidth: 0, flex: 1, textAlign: 'left' } },
       h('div.small', { style: { fontWeight: 510, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, ws?.name || 'Workspace'),
-      h('div.xs.muted', { style: { display: 'flex', gap: '6px', alignItems: 'center' } }, plan ? h('span.chip.outline.pv-plan', plan) : null, ws?.segment ? `${ws.segment[0].toUpperCase()}${ws.segment.slice(1)}` : '')),
+      h('div.xs.muted', { style: { display: 'flex', gap: '6px', alignItems: 'center' } }, plan ? h('span.chip.outline.pv-plan', plan) : null, ws?.segment ? (ws.segment === 'it' ? 'IT' : `${ws.segment[0].toUpperCase()}${ws.segment.slice(1)}`) : '')),
     icon('down', 14));
   side.replaceChildren(
     h('a.brand', { href: '/' }, h('img', { src: '/assets/brand/lockup.svg', alt: 'Pactovio', width: 134, height: 32 })),
