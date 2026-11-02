@@ -57,10 +57,11 @@ export async function sessionInfo(db: D1Database, auth: Auth) {
   const workspace = await one<Workspace>(db, 'SELECT * FROM workspaces WHERE id = ? AND sample = 0', auth.workspaceId);
   const user = await one<{ id: string; email: string }>(db, 'SELECT id, email FROM customer_users WHERE id = ?', auth.userId);
   if (!workspace || !user) throw new HttpError(401, 'Sign in to continue', 'unauthorized');
-  const onboarding = await db.prepare('SELECT completed_at FROM company_onboarding WHERE workspace_id = ?').bind(auth.workspaceId).first<{ completed_at: string | null }>();
+  const onboarding = await db.prepare(`SELECT completed_at, json_extract(data_json, '$.setup.completed_at') AS setup_completed_at
+    FROM company_onboarding WHERE workspace_id = ?`).bind(auth.workspaceId).first<{ completed_at: string | null; setup_completed_at: string | null }>();
   const counters = await db.prepare('SELECT runs_used, tavily_used FROM judge_sessions WHERE id = ?').bind(auth.sessionId).first<{ runs_used: number; tavily_used: number }>();
   return { authenticated: true as const, user, session_id: auth.sessionId!, workspace_id: workspace.id, workspace,
-    onboarding_complete: !!onboarding?.completed_at, caps: { runs: CAPS.runs, tavily: CAPS.tavily, agent_turns_per_min: CAPS.agentTurnsPerMin }, runs_used: counters?.runs_used ?? 0, tavily_used: counters?.tavily_used ?? 0 };
+    onboarding_complete: !!onboarding?.completed_at, setup_complete: !!onboarding?.setup_completed_at, caps: { runs: CAPS.runs, tavily: CAPS.tavily, agent_turns_per_min: CAPS.agentTurnsPerMin }, runs_used: counters?.runs_used ?? 0, tavily_used: counters?.tavily_used ?? 0 };
 }
 
 /** Used by long-lived agent transports after their opening HTTP request has finished. */

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { OnboardingGoals, PersonInput, ProfileInput, ResultsPatch, SetupPatch } from './onboarding-v2';
 
 export const CustomerEmail = z.string().trim().toLowerCase().max(254).email();
 export const RequestCode = z.object({ email: CustomerEmail }).strict();
@@ -18,6 +19,11 @@ export const CustomerSettings = z.object({
 export const OnboardingPatch = z.object({
   company: CompanyInput.partial().strict().optional(),
   settings: CustomerSettings.partial().strict().optional(),
+  person: PersonInput.optional(),
+  profile: ProfileInput.optional(),
+  goals: OnboardingGoals.optional(),
+  setup: SetupPatch.optional(),
+  results: ResultsPatch.optional(),
 }).strict();
 export const OnboardingInfo = z.object({
   company: CompanyInput.partial(), settings: CustomerSettings.partial(), completed_at: z.string().nullable(), updated_at: z.string(),

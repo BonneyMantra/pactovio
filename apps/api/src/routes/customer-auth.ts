@@ -4,6 +4,7 @@ import { HttpError, RequestCode, VerifyCode } from '@pactovio/contracts';
 import { exec, randomToken, sha256Hex } from '../lib/db';
 import { codeHash, sameOrigin, sixDigits, takeLimit } from '../lib/customer-security';
 import { createCustomerSession, CUSTOMER_COOKIE, customerCookie, sessionInfo } from '../lib/customer-session';
+import { otpEmail } from '../lib/otp-email';
 import type { AppEnv } from '../lib/types';
 
 export const customerAuthRoutes = new Hono<AppEnv>();
@@ -36,8 +37,7 @@ customerAuthRoutes.post('/code/request', async (c) => {
     const response = await fetch('https://api.resend.com/emails', {
       method: 'POST', signal: AbortSignal.timeout(10000),
       headers: { authorization: `Bearer ${c.env.RESEND_API_KEY}`, 'content-type': 'application/json', 'idempotency-key': `login-${challenge}` },
-      body: JSON.stringify({ from: c.env.AUTH_EMAIL_FROM, to: [email], subject: 'Your Pactovio sign-in code',
-        text: `Your Pactovio sign-in code is ${code}. It expires in 10 minutes. If you did not request this code, ignore this email.` }),
+      body: JSON.stringify({ from: c.env.AUTH_EMAIL_FROM, to: [email], ...otpEmail(code, { email, minutes: 10 }) }),
     });
     if (!response.ok) throw new Error('delivery failed');
     const receipt = await response.json() as { id?: unknown };

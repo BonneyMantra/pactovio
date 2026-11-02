@@ -45,3 +45,11 @@ export async function renderOnboarding(root, session, onComplete, onLogout) {
   await start();
   return dispose;
 }
+
+// Public build fallback for #/setup. The private overlay replaces this module with the full onboarding v2 island.
+export function renderSetup(root) {
+  root.replaceChildren(h('section.card.workspace-start', h('span.access-step', 'COMPANY SETUP'), h('h2.h3', 'Finish your company profile'),
+    h('p.small.ink2', 'Review the details Pactovio matches tenders and requests against.'),
+    h('div.workspace-start-actions', h('a.btn.btn-primary', { href: '#/company' }, icon('settings'), 'Company settings'))));
+  return () => root.replaceChildren();
+}

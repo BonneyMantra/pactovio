@@ -1,16 +1,12 @@
 import { Hono } from 'hono';
-import { CompanyInput, CustomerSettings, HttpError, OnboardingPatch } from '@pactovio/contracts';
+import { CompanyInput, HttpError, OnboardingPatch } from '@pactovio/contracts';
 import { customerAuth } from '../lib/customer-session';
+import { readOnboarding } from '../lib/onboarding-state';
 import type { AppEnv } from '../lib/types';
+import { registerOnboardingTools } from './onboarding-tools';
 
 export const onboardingRoutes = new Hono<AppEnv>();
-async function read(db: D1Database, workspace: string) {
-  const row = await db.prepare('SELECT * FROM company_onboarding WHERE workspace_id = ?').bind(workspace)
-    .first<{ data_json: string; settings_json: string; completed_at: string | null; updated_at: string }>();
-  if (!row) throw new HttpError(404, 'Company setup not found', 'not_found');
-  return { company: CompanyInput.partial().parse(JSON.parse(row.data_json)),
-    settings: CustomerSettings.partial().parse(JSON.parse(row.settings_json)), completed_at: row.completed_at, updated_at: row.updated_at };
-}
+const read = readOnboarding;
 onboardingRoutes.use('*', async (c, next) => {
   c.header('cache-control', 'no-store');
   c.set('auth', await customerAuth(c));
@@ -23,9 +19,22 @@ onboardingRoutes.patch('/', async (c) => {
   const old = await read(db, ws);
   // json_patch merges atomically, avoiding lost updates between tabs. Completed profiles must stay valid.
   if (old.completed_at) CompanyInput.parse({ ...old.company, ...patch.company });
+  const data: Record<string, unknown> = { ...(patch.company ?? {}) };
+  if (patch.person) data.person = patch.person;
+  if (patch.goals) data.goals = patch.goals;
+  if (patch.setup?.stage) data.setup = { version: 2, stage: patch.setup.stage };
+  if (patch.profile) {
+    const { confirmed_at, ...rest } = patch.profile;
+    // The confirmation time is the server's, never a client-supplied claim.
+    data.profile = confirmed_at === undefined ? rest : { ...rest, confirmed_at: confirmed_at === null ? null : new Date().toISOString() };
+  }
+  if (patch.results?.organize) {
+    const counted = await db.prepare('SELECT COUNT(*) AS n FROM products WHERE workspace_id = ?').bind(ws).first<{ n: number }>();
+    data.results = { organize: { ...patch.results.organize, product_count: counted?.n ?? 0, at: new Date().toISOString() } };
+  }
   await db.prepare(`UPDATE company_onboarding SET data_json = json_patch(data_json, ?),
     settings_json = json_patch(settings_json, ?), updated_at = ? WHERE workspace_id = ?`)
-    .bind(JSON.stringify(patch.company ?? {}), JSON.stringify(patch.settings ?? {}), new Date().toISOString(), ws).run();
+    .bind(JSON.stringify(data), JSON.stringify(patch.settings ?? {}), new Date().toISOString(), ws).run();
   await applyProfile(db, ws);
   return c.json(await read(db, ws));
 });
@@ -37,6 +46,19 @@ onboardingRoutes.post('/complete', async (c) => {
     .bind(new Date().toISOString(), new Date().toISOString(), ws).run();
   return c.json(await read(c.env.DB, ws));
 });
+/** v2 completion. Also completes v1 (COALESCE) so a fresh user is no longer gated; never resets an earlier completion. */
+onboardingRoutes.post('/setup/complete', async (c) => {
+  const ws = c.get('auth').workspaceId, db = c.env.DB, now = new Date().toISOString();
+  if (!CompanyInput.safeParse((await read(db, ws)).company).success) {
+    throw new HttpError(409, 'Add your company name, country, segment and at least one capability before finishing setup.', 'company_incomplete');
+  }
+  await applyProfile(db, ws);
+  await db.prepare(`UPDATE company_onboarding SET data_json = json_patch(data_json, json_object('setup', json_object('version', 2, 'stage', 'ready',
+      'completed_at', COALESCE(json_extract(data_json, '$.setup.completed_at'), ?)))),
+    completed_at = COALESCE(completed_at, ?), updated_at = ? WHERE workspace_id = ?`).bind(now, now, now, ws).run();
+  return c.json(await read(db, ws));
+});
+registerOnboardingTools(onboardingRoutes);
 async function applyProfile(db: D1Database, ws: string) {
   // Derive only customer-supplied facts; do not invent evidence, headcount, insurance or catalogue entries.
   await db.prepare(`UPDATE workspaces SET name = COALESCE((SELECT json_extract(data_json, '$.name') FROM company_onboarding WHERE workspace_id = ?), name),

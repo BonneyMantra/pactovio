@@ -19,6 +19,8 @@ export const SessionInfo = z.object({
   authenticated: z.literal(true),
   user: CustomerIdentity,
   onboarding_complete: z.boolean(),
+  /** Onboarding v2 finished (POST /api/onboarding/setup/complete). Returning v1 users see "Continue setup" until then. */
+  setup_complete: z.boolean().optional(),
   session_id: z.string(),
   workspace_id: z.string(),
   workspace: Workspace,

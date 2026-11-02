@@ -7,4 +7,4 @@ export {
   runNightlyScan, fetchNotices, triageWorkspace, ensurePack, notifyMatches, finishScan, loadWorkspaces, emptyStats, MATCH_THRESHOLD,
   type ScanOptions, type ScanStats, type NewMatch,
 } from './scan';
-export { SEGMENT_CPV, SCAN_COUNTRIES, cpvMatches, buyerKey } from './types';
+export { SEGMENT_CPV, SCAN_COUNTRIES, cpvMatches, buyerKey, decodeHtml } from './types';

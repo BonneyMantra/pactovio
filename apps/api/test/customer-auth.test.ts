@@ -23,6 +23,8 @@ async function request(label: string) {
   const res = await call('/auth/code/request', { email: address });
   expect(res.status).toBe(202);
   const code = sent.at(-1)!.text.match(/\b\d{6}\b/)![0];
+  // The delivered email carries the HTML part (spaced code) beside the plain-text part.
+  expect((sent.at(-1) as { html?: string }).html).toContain(`${code.slice(0, 3)} ${code.slice(3)}`);
   return { address, code };
 }
 async function login(label: string) {

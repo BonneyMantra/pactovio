@@ -99,11 +99,11 @@ export async function completeIntegrationOAuth(env: Env, session: string, worksp
   try {
     const client = integrationClient(env), user = workspaceUser(workspace);
     // Verify before consuming: a late callback from an older attempt must not consume the newer cookie's state.
-    if (isOAuthScheme(state.auth_scheme)) {
-      if (!query.session_uri) return failed;
+    // Identity verification on: Composio returns only ?session_uri= (no state) for every scheme; redeem it as this workspace user.
+    if (query.session_uri) {
       const result = await client.completeAuth(user, query.session_uri);
       if (result.connected_account_id !== state.account_id || result.toolkit_slug !== state.toolkit) return failed;
-    } else if (!query.state || query.state !== cookie) return failed;
+    } else if (isOAuthScheme(state.auth_scheme) || !query.state || query.state !== cookie) return failed;
     if (query.connected_account_id && query.connected_account_id !== state.account_id) return failed;
     const account = await client.getConnectedAccount(state.account_id);
     if (account.id !== state.account_id || account.toolkit !== state.toolkit || account.status !== 'ACTIVE' || account.userId !== user) return failed;

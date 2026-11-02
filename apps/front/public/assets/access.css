@@ -96,3 +96,7 @@
 .evidence-kinds { display: flex; gap: 8px; flex-wrap: wrap; }
 .evidence-kinds button[aria-pressed=true] { background: var(--accent-soft); border-color: var(--accent); color: var(--ink); }
 .evidence-upload [role=status] { min-height: 20px; }
+.setup-today { display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px; }
+.setup-today .wk-stats { margin-bottom: 0; }
+.setup-continue { display: flex; align-items: center; justify-content: space-between; gap: 16px 24px; flex-wrap: wrap; padding: 20px 24px; border-left: 3px solid var(--accent, #f2600c); }
+.setup-continue p { margin: 6px 0 0; max-width: 560px; }

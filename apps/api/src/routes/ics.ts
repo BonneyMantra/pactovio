@@ -44,7 +44,9 @@ function vevent(uid: string, now: string, start: Date, end: Date, summary: strin
     'BEGIN:VALARM', 'ACTION:DISPLAY', 'TRIGGER:-P1D', `DESCRIPTION:${esc(alarm)}`, 'END:VALARM', 'END:VEVENT'];
 }
 
-export function buildIcs(items: IcsTender[], nowDate = new Date()): string {
+export interface IcsDeadline { id: string; title: string; due_at: string; source_title: string; excerpt: string }
+
+export function buildIcs(items: IcsTender[], nowDate = new Date(), deadlines: IcsDeadline[] = []): string {
   const now = stamp(nowDate);
   const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Pactovio//Tender deadlines//EN', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', 'X-WR-CALNAME:Pactovio tender deadlines'];
   for (const t of items) {
@@ -52,6 +54,15 @@ export function buildIcs(items: IcsTender[], nowDate = new Date()): string {
     const end = new Date(t.deadline);
     if (!Number.isNaN(end.getTime())) lines.push(...vevent(t.id, now, new Date(end.getTime() - 30 * 60_000), end, `Deadline: ${t.title}`, info, 'Tender closes tomorrow'));
     for (const k of keyDates(t.raw)) lines.push(...vevent(`${t.id}-${k.key}`, now, new Date(k.at.getTime() - 30 * 60_000), k.at, `${k.label}: ${t.title}`, info, `${k.label} tomorrow`));
+  }
+  // Customer-confirmed dates are all-day events on the stated day (no invented time of day).
+  for (const d of deadlines) {
+    const day = d.due_at.replace(/-/g, ''), next = new Date(`${d.due_at}T00:00:00Z`);
+    if (Number.isNaN(next.getTime())) continue;
+    next.setUTCDate(next.getUTCDate() + 1);
+    lines.push('BEGIN:VEVENT', `UID:${d.id}@pactovio`, `DTSTAMP:${now}`, `DTSTART;VALUE=DATE:${day}`, `DTEND;VALUE=DATE:${next.toISOString().slice(0, 10).replace(/-/g, '')}`,
+      fold(`SUMMARY:${esc(d.title)}`), fold(`DESCRIPTION:${esc([d.source_title, d.excerpt].filter(Boolean).join('. '))}`),
+      'BEGIN:VALARM', 'ACTION:DISPLAY', 'TRIGGER:-P1D', `DESCRIPTION:${esc(`${d.title} tomorrow`)}`, 'END:VALARM', 'END:VEVENT');
   }
   lines.push('END:VCALENDAR');
   return lines.join('\r\n') + '\r\n';
@@ -69,5 +80,6 @@ export const icsRoutes = new Hono<AppEnv>().get('/ics/:file', async (c) => {
      WHERE m.workspace_id = ? AND m.status != 'dismissed' AND t.deadline IS NOT NULL ORDER BY t.deadline`,
     ws,
   );
-  return new Response(buildIcs(items), { headers: { 'content-type': 'text/calendar; charset=utf-8', 'cache-control': 'public, max-age=300' } });
+  const deadlines = await rows<IcsDeadline>(c.env.DB, "SELECT id, title, due_at, source_title, excerpt FROM workspace_deadlines WHERE workspace_id = ? AND status = 'open' ORDER BY due_at", ws);
+  return new Response(buildIcs(items, new Date(), deadlines), { headers: { 'content-type': 'text/calendar; charset=utf-8', 'cache-control': 'public, max-age=300' } });
 });

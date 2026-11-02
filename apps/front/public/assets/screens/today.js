@@ -1,6 +1,7 @@
 // Today: the morning brief. Counts, best tender matches, approvals waiting, newest intakes, recent runs.
 import { api, h, icon, fmt, chip, empty, errorBox, skeleton } from '../ui.js';
 import { dash, doorChip, sourceMark, senderName, fitRing, sectionTitle } from './work-kit.js';
+import { setupPanel } from './setup-results.js';
 
 function greeting() {
   const hr = new Date().getHours();
@@ -50,6 +51,9 @@ export async function render(root, _params, ctx) {
   root.append(h('div.page-head', h('div', h('h1.title', greeting()), h('div.sub', ws ? `Here's what changed for ${ws}.` : "Here's what changed today.")),
     h('a.btn.btn-secondary.btn-sm', { href: '#/inbox/new' }, icon('inbox'), 'New intake')));
   const body = h('div');
+  // Setup progress/results load from their own APIs, so they stay visible even if the brief fails.
+  const setup = setupPanel(ctx);
+  if (setup) root.append(setup);
   root.append(body);
   body.append(skeleton(6));
   let t;

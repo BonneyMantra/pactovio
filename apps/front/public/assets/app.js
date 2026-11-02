@@ -6,6 +6,7 @@ import { gateFrame, leaveGate, gateLayout, gateError, renderAuth } from './acces
 import { renderOnboarding } from './onboarding.js';
 import { clearCompanyDraft } from './company-form.js';
 import { rememberSetupReturn, restoreSetupReturn, clearSetupReturn } from './onboarding-return.js';
+import { setupPending } from './screens/setup-results.js';
 
 const NAV = [
   { id: 'today', label: 'Today', icon: 'home', mod: 'today' },
@@ -31,7 +32,8 @@ function parse() {
   return { section: parts[0] || 'today', id: parts[1] ? decodeURIComponent(parts[1]) : null, rest: parts.slice(2) };
 }
 
-const ctx = { session: null, billing: null, counts: {}, setCrumbs, refreshCounts };
+const ctx = { session: null, billing: null, setup: null, counts: {}, setCrumbs, refreshCounts, refreshSetup };
+const SETUP_ROUTE = { id: 'setup', label: 'Setup', mod: 'setup' };
 let cleanup = null, gateCleanup = null, generation = 0, ready = false;
 
 function initials(name = '') { return name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase() || 'P'; }
@@ -49,6 +51,7 @@ async function openIdentityMenu(anchor) {
   const list = h('div.pv-menu-list', h('div.xs.muted', { style: { padding: '6px 10px' } }, 'Loading workspaces…'));
   const menu = h('div.pv-menu', { role: 'menu' },
     h('div.pv-menu-head.xs.muted', 'Switch workspace'), list, h('div.pv-menu-sep'),
+    setupPending(ctx.setup) ? h('a.pv-menu-item', { href: '#/setup', role: 'menuitem' }, icon('spark'), 'Continue setup') : null,
     h('a.pv-menu-item', { href: '#/settings', role: 'menuitem' }, icon('card'), 'Billing & usage'),
     h('a.pv-menu-item', { href: '#/company', role: 'menuitem' }, icon('settings'), 'Company settings'),
     h('a.pv-menu-item', { href: '#/help', role: 'menuitem' }, icon('search'), 'Help'),
@@ -108,6 +111,10 @@ function setCrumbs(...items) {
   );
 }
 
+async function refreshSetup() {
+  ctx.setup = await api('/onboarding').catch(() => null);
+}
+
 async function refreshCounts() {
   try {
     const t = await api('/today');
@@ -119,7 +126,7 @@ async function route() {
   if (!ready || !ctx.session) return;
   const current = ++generation;
   const { section, id, rest } = parse();
-  const nav = NAV.find((n) => n.id === section) || NAV[0];
+  const nav = section === 'setup' ? SETUP_ROUTE : NAV.find((n) => n.id === section) || NAV[0];
   setDrawer(false);
   closeMenus();
   renderSide(nav.id);
@@ -145,7 +152,7 @@ function clearWorkspace() {
   ready = false; generation++;
   cleanup?.(); cleanup = null; gateCleanup?.(); gateCleanup = null;
   setDrawer(false); closeMenus();
-  ctx.session = null; ctx.billing = null; ctx.counts = {};
+  ctx.session = null; ctx.billing = null; ctx.setup = null; ctx.counts = {};
   ['side', 'topbar', 'view'].forEach((id) => document.getElementById(id).replaceChildren());
   document.querySelectorAll('.toast-wrap').forEach((node) => node.remove());
 }
@@ -177,8 +184,10 @@ async function boot() {
     }
     ctx.billing = await api('/billing').catch(() => null);
     if (current !== generation) return;
-    await refreshCounts();
+    await Promise.all([refreshCounts(), refreshSetup()]);
     if (current !== generation) return;
+    // Provider sign-ins return to #/onboarding; a returning customer still finishing v2 setup goes back to #/setup.
+    if (setupPending(ctx.setup) && /^#\/onboarding(\?|$)/.test(location.hash)) history.replaceState(null, '', `/app#/setup${location.hash.slice(12)}`);
     restoreSetupReturn(session.workspace_id);
     leaveGate(); ready = true; route();
   } catch (error) {

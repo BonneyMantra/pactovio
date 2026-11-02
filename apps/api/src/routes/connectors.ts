@@ -12,6 +12,7 @@ import { sessionAuth } from '../lib/auth';
 import type { Handler, Register } from '../lib/router';
 import type { AppEnv } from '../lib/types';
 import { integrationVerifier, UNIVERSAL_OAUTH_COOKIE } from './integration-workflows';
+import { pendingOAuthFlow } from '../lib/oauth-dispatch';
 
 const TEST_CAP_PER_HOUR = 20;
 
@@ -61,7 +62,12 @@ export const register: Register = (r) => {
 
   // Composio sends the browser back here after OAuth (not part of the typed contract: a redirect, not JSON).
   const callback = async (c: Context<AppEnv>) => {
-    if (getCookie(c, UNIVERSAL_OAUTH_COOKIE)) return integrationVerifier(c);
+    const universal = getCookie(c, UNIVERSAL_OAUTH_COOKIE), legacy = getCookie(c, 'pv_oauth');
+    if (universal) {
+      // Both flows share this project verifier URL; pick the pending attempt this signed-in session actually started.
+      const flow = legacy ? await pendingOAuthFlow(c.env, (await sessionAuth(c)).sessionId!, universal, legacy) : 'universal';
+      if (flow !== 'legacy') return integrationVerifier(c);
+    }
     const q = z.object({ state: z.string().regex(/^[a-f0-9]{64}$/).optional(), session_uri: z.string().min(1).max(4096).optional(),
       status: z.string().max(80).optional(), connected_account_id: z.string().max(200).optional() }).parse(c.req.query());
     const auth = await sessionAuth(c);

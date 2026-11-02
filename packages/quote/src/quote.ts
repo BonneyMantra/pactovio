@@ -10,6 +10,8 @@ export interface CreateQuoteInput {
   tenderId?: string;
   productIds?: string[];
   qty?: number;
+  /** Explicit lines with their own quantities (takes precedence over productIds/qty). */
+  lines?: { productId: string; qty: number }[];
   buyer?: Partial<Buyer>;
 }
 
@@ -33,7 +35,9 @@ export async function createQuote(env: Env, input: CreateQuoteInput): Promise<Qu
   };
 
   let picks: { id: string; qty: number }[];
-  if (input.productIds?.length) {
+  if (input.lines?.length) {
+    picks = input.lines.map((l) => ({ id: l.productId, qty: l.qty }));
+  } else if (input.productIds?.length) {
     const q = input.qty ?? (Number.isSafeInteger(stated) && stated > 0 ? stated : 1);
     picks = input.productIds.map((id) => ({ id, qty: q }));
   } else {
