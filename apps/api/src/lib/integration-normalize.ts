@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import type { Env } from '@pactovio/contracts/env';
 import { HttpError, PRODUCT_CURRENCIES } from '@pactovio/contracts';
-import { chatJSON, isBudgetError, budgetMessage } from '@pactovio/models';
+import { chatJSON, isBudgetError, budgetMessage, JsonValidationError } from '@pactovio/models';
 import { ownJob } from './integration-jobs';
 import { conflict, FieldMap, RecordInput, sensitive } from './integration-input';
 const fields = ['external_id','name','sku','description','price','currency','unit','cost','cost_currency','cost_unit'] as const;
@@ -68,6 +68,11 @@ export async function normalizeImport(env: Env, workspace: string, id: string, r
     const upstreamStatus=(error as {status?:number})?.status;
     if(upstreamStatus===401||upstreamStatus===403) throw new HttpError(503,'The AI service rejected authentication. Your staged rows are saved; use manual mapping.','normalization_auth_rejected');
     if(upstreamStatus===404) throw new HttpError(503,'The configured AI model is unavailable. Your staged rows are saved; use manual mapping.','normalization_model_unavailable');
-    throw new HttpError(503,'AI interpretation is unavailable. Your staged rows are saved; use manual mapping and completion.','normalization_unavailable');
+    // Safe, specific classes (no upstream bodies or values) so failures can be diagnosed without exposing data.
+    const name=(error as {name?:string})?.name??'';
+    const code=error instanceof JsonValidationError?'normalization_invalid_output':name==='TimeoutError'||name==='AbortError'?'normalization_timeout'
+      :upstreamStatus===429?'normalization_rate_limited':upstreamStatus&&upstreamStatus>=500?'normalization_upstream_error'
+      :upstreamStatus&&upstreamStatus>=400?'normalization_request_rejected':'normalization_unavailable';
+    throw new HttpError(503,'AI interpretation is unavailable. Your staged rows are saved; use manual mapping and completion.',code);
   }
 }
