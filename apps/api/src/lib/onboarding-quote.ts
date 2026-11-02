@@ -36,8 +36,8 @@ export async function createOnboardingQuote(env: Env, workspace: string, input: 
   const title = input.title || input.request_text.split(/\r?\n/)[0]!.slice(0, 120) || 'Customer request';
   // intakes.source has a CHECK constraint without 'onboarding'; the request was pasted by the customer, i.e. an upload.
   await db.batch([
-    db.prepare(`INSERT INTO intakes (id, workspace_id, door, source, title, received_at, status, classification_json, design_request_id)
-      VALUES (?, ?, 'design', 'upload', ?, ?, 'ready', ?, ?)`).bind(intake, workspace, title.slice(0, 200), at,
+    db.prepare(`INSERT INTO intakes (id, workspace_id, door, source, title, sender, received_at, status, classification_json, design_request_id)
+      VALUES (?, ?, 'design', 'upload', ?, ?, ?, 'ready', ?, ?)`).bind(intake, workspace, title.slice(0, 200), input.customer?.trim() || null, at,
       JSON.stringify({ door: 'design', confidence: 1, origin: 'onboarding', reason: 'Request pasted by the customer during setup' }), design),
     db.prepare(`INSERT INTO design_requests (id, workspace_id, intake_id, customer, subject, spec_text, requirements_json, matches_json, status)
       VALUES (?, ?, ?, ?, ?, ?, '[]', '[]', 'new')`).bind(design, workspace, intake, input.customer ?? '', title.slice(0, 200), input.request_text),

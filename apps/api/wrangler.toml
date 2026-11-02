@@ -20,6 +20,8 @@ PUBLIC_ORIGIN = "https://pactovio.pages.dev"
 MODEL_DAILY_CAP_USD = "0.25"
 # Kill switch: "1" stops every model call. Also settable without a deploy: KV key config:models_disabled = "1".
 MODELS_DISABLED = "0"
+# Composio project "pactovio" sends OAuth callbacks to https://pactovio.pages.dev/api/connectors/verifier (set 2026-11-03).
+COMPOSIO_CALLBACK_VERIFIER_ENABLED = "true"
 
 [[d1_databases]]
 binding = "DB"

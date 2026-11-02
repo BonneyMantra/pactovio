@@ -71,6 +71,8 @@ export async function searchOpportunities(env: Env, workspace: string, state: On
   } else if (ai.ran) ai = { ran: false }; // nothing to score
   const scoredFirst = [...ranked].sort((a, b) => (b.fit.method === 'ai' ? (b.fit.score ?? 0) + 1000 : 0) - (a.fit.method === 'ai' ? (a.fit.score ?? 0) + 1000 : 0));
   const notices: Notice[] = scoredFirst.map(({ t, fit }) => ({ source: t.source as 'ted' | 'fts', id: t.source_ref, title: t.title, buyer: t.buyer,
-    country: t.country, deadline: t.deadline, url: t.url, cpv: t.cpv.slice(0, 8), fit }));
+    country: t.country, deadline: t.deadline, url: t.url,
+    // Matching codes first so the CPV cited in the keyword reason is always in the returned list.
+    cpv: [...new Set([...t.cpv.filter((c) => cpvMatches([c], SEGMENT_CPV[segment as 'it'])), ...t.cpv])].slice(0, 8), fit }));
   return { notices, ai, searched_at: now.toISOString(), sources_failed: sourcesFailed };
 }
