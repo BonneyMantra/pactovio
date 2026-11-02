@@ -65,11 +65,14 @@ export async function searchOpportunities(env: Env, workspace: string, state: On
     settled.forEach((s, i) => {
       if (s.status !== 'fulfilled') return;
       scored++;
-      ranked[i]!.fit = { method: 'ai', score: Math.round(s.value.fit_score), reasons: [s.value.reason.slice(0, 400)] };
+      const why = s.value.reason.trim().slice(0, 400);
+      ranked[i]!.fit = { method: 'ai', score: Math.round(s.value.fit_score), reasons: [/[.!?)]$/.test(why) ? why : `${why}…`] };
     });
     if (!scored) ai = aiFailure(settled.find((s) => s.status === 'rejected')?.reason);
   } else if (ai.ran) ai = { ran: false }; // nothing to score
-  const scoredFirst = [...ranked].sort((a, b) => (b.fit.method === 'ai' ? (b.fit.score ?? 0) + 1000 : 0) - (a.fit.method === 'ai' ? (a.fit.score ?? 0) + 1000 : 0));
+  // Strong AI fits first, then unscored keyword matches, then notices the AI judged a weak fit.
+  const tier = (f: Notice['fit']) => f.method !== 'ai' ? 1 : (f.score ?? 0) >= 50 ? 0 : 2;
+  const scoredFirst = [...ranked].sort((a, b) => tier(a.fit) - tier(b.fit) || (b.fit.score ?? 0) - (a.fit.score ?? 0));
   const notices: Notice[] = scoredFirst.map(({ t, fit }) => ({ source: t.source as 'ted' | 'fts', id: t.source_ref, title: t.title, buyer: t.buyer,
     country: t.country, deadline: t.deadline, url: t.url,
     // Matching codes first so the CPV cited in the keyword reason is always in the returned list.
