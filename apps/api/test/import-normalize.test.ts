@@ -24,6 +24,10 @@ describe('real model contract with transport fixtures, never live spend',()=>{
  it('does not apply another amount header currency to the selling price',async()=>{
  const j=await staged();const data=content();data.suggestions[1].source_field='price';model(data);const r=await f.call(`/imports/${j.id}/normalize`,{revision:0});expect(r.status).toBe(200);const out=await r.json() as any;expect(out.mapping.confirmed_currency).toBeUndefined();expect(out.questions.some((q:any)=>q.field==='confirmed_currency')).toBe(true);
  });
+ it('classifies upstream authentication failure without leaking provider details',async()=>{
+ const j=await staged();const spy=vi.spyOn(globalThis,'fetch').mockResolvedValue(new Response(JSON.stringify({error:{message:'private-auth-detail-never-return',type:'authentication_error'}}),{status:401,headers:{'content-type':'application/json'}}));
+ const r=await f.call(`/imports/${j.id}/normalize`,{revision:0});expect(r.status).toBe(503);const text=await r.text();expect(text).toContain('normalization_auth_rejected');expect(text).not.toContain('private-auth-detail');expect(spy).toHaveBeenCalledTimes(1);expect(await(await f.call(`/imports/${j.id}`)).json()).toMatchObject({state:'staged',revision:0});
+ });
  it('rejects a fabricated source column without claiming normalization or changing staging',async()=>{
  const j=await staged();model(content('invented purchase cost'));const r=await f.call(`/imports/${j.id}/normalize`,{revision:0});expect(r.status).toBe(503);const text=await r.text();expect(text).toContain('normalization_unavailable');expect(text).not.toContain('invented');expect(await (await f.call(`/imports/${j.id}`)).json()).toMatchObject({revision:0,state:'staged'});
  });
