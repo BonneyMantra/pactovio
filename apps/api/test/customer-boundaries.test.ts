@@ -110,6 +110,9 @@ describe('resumable onboarding', () => {
     expect(draft.company).toMatchObject({ name: 'Meridian Instruments Sdn Bhd', country: 'MY' });
     expect(draft.completed_at).toBeNull();
     expect((await call('/onboarding', 'PATCH', { company: { supplier_segment: 'industrial', capabilities: ['Industrial telemetry'], website: 'https://meridian.example' }, settings: { timezone: 'Asia/Kuala_Lumpur', notifications_enabled: true } })).status).toBe(200);
+    // v3: the legacy completion route also requires the company-understanding fields.
+    expect((await call('/onboarding/complete', 'POST', {})).status).toBe(409);
+    expect((await call('/onboarding', 'PATCH', { profile: { description: 'Industrial telemetry hardware and monitoring for utilities.', offerings: ['Remote telemetry units'], markets: ['Utilities'], customers: ['Water utilities'] } })).status).toBe(200);
     expect((await call('/onboarding/complete', 'POST', {})).status).toBe(200);
     const session = await (await call('/session')).json() as any;
     expect(session.onboarding_complete).toBe(true);

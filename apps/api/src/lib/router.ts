@@ -25,7 +25,7 @@ export function errorResponse(c: Context, e: unknown): Response {
     const msg = e.issues.map((i) => `${i.path.join('.') || '(root)'}: ${i.message}`).join('; ');
     return c.json({ error: msg, code: 'validation' }, 400);
   }
-  if (e instanceof HttpError) return c.json({ error: e.message, code: e.code ?? 'error' }, e.status);
+  if (e instanceof HttpError) return c.json({ ...e.details, error: e.message, code: e.code ?? 'error' }, e.status);
   if (isBudgetError(e)) return c.json({ error: budgetMessage(e), code: (e as { code?: string }).code === 'models_off' ? 'models_off' : 'cap_daily' }, 429);
   if (e instanceof NotImplemented) return c.json({ error: e.message, code: 'not_implemented' }, 501);
   console.error('unhandled', e instanceof Error ? `${e.name}: ${e.message}` : 'unknown');

@@ -8,7 +8,9 @@ export class NotImplemented extends Error {
 }
 
 export class HttpError extends Error {
-  constructor(public status: 400 | 401 | 402 | 403 | 404 | 409 | 413 | 422 | 429 | 500 | 501 | 502 | 503, message: string, public code?: string) {
+  /** `details` are extra safe, client-facing fields merged into the `{ error, code }` body (e.g. `missing`). */
+  constructor(public status: 400 | 401 | 402 | 403 | 404 | 409 | 413 | 415 | 422 | 429 | 500 | 501 | 502 | 503, message: string, public code?: string,
+    public details?: Record<string, unknown>) {
     super(message);
     this.name = 'HttpError';
   }

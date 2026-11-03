@@ -38,7 +38,12 @@ async function fill(grid, r) {
     r.quotes?.quote_id ? api(`/quotes/${encodeURIComponent(r.quotes.quote_id)}`) : Promise.resolve(null),
   ]);
   const tiles = [];
-  if (r.opportunities) tiles.push(tile('Opportunities', String(r.opportunities.count ?? 0), '#/setup', r.opportunities.at ? `Searched ${fmt.date(r.opportunities.at)}` : null));
+  if (r.opportunities) {
+    const saved = Array.isArray(r.opportunities.saved) ? r.opportunities.saved.length : 0;
+    tiles.push(saved
+      ? tile('Saved tenders', String(saved), '#/tenders', `From ${r.opportunities.count ?? 0} open notices found in setup`)
+      : tile('Opportunities', String(r.opportunities.count ?? 0), '#/setup', r.opportunities.at ? `Searched ${fmt.date(r.opportunities.at)}` : null));
+  }
   tiles.push(products.status === 'fulfilled'
     ? tile('Products', String(products.value?.items?.length ?? 0), '#/catalogue', 'In your catalogue')
     : tile('Products', '—', '#/catalogue', 'Could not load'));

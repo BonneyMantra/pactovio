@@ -100,26 +100,37 @@ export async function assertResolvesPublic(host: string, fetchFn: typeof fetch):
   if (!addresses) throw new SiteError('unreadable', 'The website address could not be resolved.');
 }
 
-async function readCapped(res: Response): Promise<string> {
-  if (Number(res.headers.get('content-length') ?? 0) > MAX_PAGE_BYTES) { await res.body?.cancel().catch(() => undefined); throw new SiteError('too_large', 'The page is larger than 1.5 MB.'); }
-  if (!res.body) return '';
+async function readCapped(res: Response, max = MAX_PAGE_BYTES): Promise<Uint8Array> {
+  const tooLarge = () => new SiteError('too_large', max === MAX_PAGE_BYTES ? 'The page is larger than 1.5 MB.' : `The file is larger than ${Math.round(max / 1_048_576)} MB.`);
+  if (Number(res.headers.get('content-length') ?? 0) > max) { await res.body?.cancel().catch(() => undefined); throw tooLarge(); }
+  if (!res.body) return new Uint8Array();
   const reader = res.body.getReader(), chunks: Uint8Array[] = [];
   let total = 0;
   for (;;) {
     const { done, value } = await reader.read();
     if (done) break;
     total += value.byteLength;
-    if (total > MAX_PAGE_BYTES) { await reader.cancel().catch(() => undefined); throw new SiteError('too_large', 'The page is larger than 1.5 MB.'); }
+    if (total > max) { await reader.cancel().catch(() => undefined); throw tooLarge(); }
     chunks.push(value);
   }
   const all = new Uint8Array(total);
   let at = 0;
   for (const c of chunks) { all.set(c, at); at += c.byteLength; }
-  return new TextDecoder('utf-8').decode(all);
+  return all;
 }
+
+export interface FetchOptions { accept: string; maxBytes: number; types: RegExp }
+const HTML: FetchOptions = { accept: 'text/html,application/xhtml+xml', maxBytes: MAX_PAGE_BYTES, types: /text\/html|application\/xhtml\+xml/i };
 
 /** Fetch one HTML page through the guard. `site` is the registrable domain the whole analysis is pinned to. */
 export async function fetchPublicPage(start: URL, site: string, fetchFn: typeof fetch, resolved = new Set<string>()): Promise<{ url: URL; html: string }> {
+  const got = await fetchPublic(start, site, fetchFn, resolved, HTML);
+  return { url: got.url, html: new TextDecoder('utf-8').decode(got.bytes) };
+}
+
+/** Guarded fetch of any public resource whose content type matches `opts.types` (pages, product images). */
+export async function fetchPublic(start: URL, site: string, fetchFn: typeof fetch, resolved: Set<string>, opts: FetchOptions):
+  Promise<{ url: URL; bytes: Uint8Array; contentType: string }> {
   let url = start;
   for (let hop = 0; hop <= 4; hop++) {
     try {
@@ -134,7 +145,7 @@ export async function fetchPublicPage(start: URL, site: string, fetchFn: typeof 
     let res: Response;
     try {
       res = await fetchFn(url.href, { redirect: 'manual', signal: AbortSignal.timeout(PAGE_TIMEOUT_MS),
-        headers: { accept: 'text/html,application/xhtml+xml', 'user-agent': 'PactovioSetupReader/1.0 (+https://pactovio.pages.dev)' } });
+        headers: { accept: opts.accept, 'user-agent': 'PactovioSetupReader/1.0 (+https://pactovio.pages.dev)' } });
     } catch { throw new SiteError('unreadable', 'The website did not respond in time.'); }
     if (res.status >= 300 && res.status < 400) {
       const location = res.headers.get('location');
@@ -146,8 +157,11 @@ export async function fetchPublicPage(start: URL, site: string, fetchFn: typeof 
     }
     if (!res.ok) { await res.body?.cancel().catch(() => undefined); throw new SiteError('unreadable', `The website answered with HTTP ${res.status}.`); }
     const type = res.headers.get('content-type') ?? '';
-    if (!/text\/html|application\/xhtml\+xml/i.test(type)) { await res.body?.cancel().catch(() => undefined); throw new SiteError('not_html', 'The address is not an HTML page.'); }
-    return { url, html: await readCapped(res) };
+    if (!opts.types.test(type)) {
+      await res.body?.cancel().catch(() => undefined);
+      throw new SiteError('not_html', opts === HTML ? 'The address is not an HTML page.' : 'The address did not return a supported file type.');
+    }
+    return { url, bytes: await readCapped(res, opts.maxBytes), contentType: type.split(';')[0]!.trim().toLowerCase() };
   }
   throw new SiteError('unreadable', 'The website redirected too many times.');
 }

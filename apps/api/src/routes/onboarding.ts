@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { CompanyInput, HttpError, OnboardingPatch } from '@pactovio/contracts';
 import { customerAuth } from '../lib/customer-session';
+import { assertCompanyComplete } from '../lib/company-required';
 import { readOnboarding } from '../lib/onboarding-state';
 import type { AppEnv } from '../lib/types';
 import { registerOnboardingTools } from './onboarding-tools';
@@ -19,6 +20,10 @@ onboardingRoutes.patch('/', async (c) => {
   const old = await read(db, ws);
   // json_patch merges atomically, avoiding lost updates between tabs. Completed profiles must stay valid.
   if (old.completed_at) CompanyInput.parse({ ...old.company, ...patch.company });
+  // v3: confirming the company profile requires every company-understanding value (merged with this patch).
+  if (typeof patch.profile?.confirmed_at === 'string') {
+    assertCompanyComplete({ company: { ...old.company, ...patch.company }, profile: { ...old.profile, ...patch.profile } });
+  }
   const data: Record<string, unknown> = { ...(patch.company ?? {}) };
   if (patch.person) data.person = patch.person;
   if (patch.goals) data.goals = patch.goals;
@@ -40,7 +45,10 @@ onboardingRoutes.patch('/', async (c) => {
 });
 onboardingRoutes.post('/complete', async (c) => {
   const ws = c.get('auth').workspaceId;
-  CompanyInput.parse((await read(c.env.DB, ws)).company);
+  const current = await read(c.env.DB, ws);
+  CompanyInput.parse(current.company);
+  // First completion through the legacy route must meet the same company requirements; finished users keep access.
+  if (!current.completed_at) assertCompanyComplete(current);
   await applyProfile(c.env.DB, ws);
   await c.env.DB.prepare('UPDATE company_onboarding SET completed_at = COALESCE(completed_at, ?), updated_at = ? WHERE workspace_id = ?')
     .bind(new Date().toISOString(), new Date().toISOString(), ws).run();
@@ -49,8 +57,10 @@ onboardingRoutes.post('/complete', async (c) => {
 /** v2 completion. Also completes v1 (COALESCE) so a fresh user is no longer gated; never resets an earlier completion. */
 onboardingRoutes.post('/setup/complete', async (c) => {
   const ws = c.get('auth').workspaceId, db = c.env.DB, now = new Date().toISOString();
-  if (!CompanyInput.safeParse((await read(db, ws)).company).success) {
-    throw new HttpError(409, 'Add your company name, country, segment and at least one capability before finishing setup.', 'company_incomplete');
+  const state = await read(db, ws);
+  assertCompanyComplete(state);
+  if (!CompanyInput.safeParse(state.company).success) {
+    throw new HttpError(409, 'Check your company details before finishing setup.', 'company_incomplete', { missing: [] });
   }
   await applyProfile(db, ws);
   await db.prepare(`UPDATE company_onboarding SET data_json = json_patch(data_json, json_object('setup', json_object('version', 2, 'stage', 'ready',

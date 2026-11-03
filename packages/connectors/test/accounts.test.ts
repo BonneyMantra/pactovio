@@ -16,7 +16,8 @@ let session: string;
 let otherSession: string;
 const acct = (id: string, toolkit: string, status = 'ACTIVE', user = 'pactovio-demo') => ({ id, toolkit: { slug: toolkit }, status, user_id: user, created_at: '2026-10-30T00:00:00Z', state: { val: { displayName: `${toolkit} demo account` } } });
 
-beforeAll(async () => { ({ env, dispose } = await makeEnv()); env = { ...env, COMPOSIO_API_KEY: 'k' } as Env; session = (await customerFixture(env, R)).session; otherSession = (await customerFixture(env)).session; }, 60_000);
+beforeAll(async () => { ({ env, dispose } = await makeEnv()); // wrangler.toml enables the production verifier; these tests opt in per case.
+  env = { ...env, COMPOSIO_API_KEY: 'k', COMPOSIO_CALLBACK_VERIFIER_ENABLED: undefined } as Env; session = (await customerFixture(env, R)).session; otherSession = (await customerFixture(env)).session; }, 60_000);
 afterAll(async () => dispose?.());
 
 describe('catalogue status', () => {

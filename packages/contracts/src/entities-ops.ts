@@ -42,6 +42,12 @@ export const Product = z.object({
   cost_currency: z.string().nullable().optional(),
   cost_unit: z.string().nullable().optional(),
   zero_cost_confirmed: z.number().nullable().optional(),
+  /** v3: authenticated image route for this workspace's product image (null when none). */
+  image_url: z.string().nullable().optional(),
+  image_source_url: z.string().nullable().optional(),
+  image_updated_at: z.string().nullable().optional(),
+  /** v3: mandatory catalogue fields still missing on this product. */
+  required_gaps: z.array(z.string()).optional(),
 });
 export type Product = z.infer<typeof Product>;
 

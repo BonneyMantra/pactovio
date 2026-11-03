@@ -39,7 +39,8 @@ export async function saveDeadlines(db: D1Database, workspace: string, input: z.
 }
 
 export async function listDeadlines(db: D1Database, workspace: string) {
-  const res = await db.prepare(`SELECT id, title, due_at, excerpt, source_title, status, created_at FROM workspace_deadlines
+  const res = await db.prepare(`SELECT id, title, due_at, excerpt, source_title, status, created_at, tender_id, kind FROM workspace_deadlines
     WHERE workspace_id = ? ORDER BY due_at, created_at LIMIT 500`).bind(workspace).all();
-  return res.results as { id: string; title: string; due_at: string; excerpt: string; source_title: string; status: 'open' | 'done'; created_at: string }[];
+  return res.results as { id: string; title: string; due_at: string; excerpt: string; source_title: string; status: 'open' | 'done'; created_at: string;
+    tender_id: string | null; kind: string | null }[];
 }

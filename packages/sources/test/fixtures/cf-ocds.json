@@ -1,0 +1,357 @@
+{
+ "uri": "https://www.contractsfinder.service.gov.uk/Published/Notices/OCDS/Search?stages=tender&publishedFrom=2026-11-01T00:00:00&size=5&publishedTo=2026-11-03T16:37:58Z&limit=100",
+ "version": "1.1",
+ "extensions": [
+  "https://standard.open-contracting.org/profiles/eu/master/en/extension.json",
+  "https://raw.githubusercontent.com/portaledcahn/ocds_tenderDatePublished_extension/master/extension.json",
+  "https://raw.githubusercontent.com/open-contracting-extensions/ocds_budget_breakdown_extension/master/extension.json",
+  "https://raw.githubusercontent.com/Crown-Commercial-Service/ocds_awards_datePublished_extension/main/extension.json",
+  "https://raw.githubusercontent.com/Crown-Commercial-Service/ocds_partyDetails_vcse_extension/main/extension.json",
+  "https://raw.githubusercontent.com/Crown-Commercial-Service/ocds_tender_suitability_extension/main/extension.json",
+  "https://raw.githubusercontent.com/open-contracting-extensions/ocds_pagination_extension/master/extension.json"
+ ],
+ "publishedDate": "2026-11-03T15:57:57Z",
+ "publisher": {
+  "name": "Cabinet Office",
+  "scheme": "GB-GOR",
+  "uid": "D2",
+  "uri": "https://www.gov.uk/government/organisations/cabinet-office"
+ },
+ "license": "http://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+ "publicationPolicy": "https://www.gov.uk/government/publications/open-contracting",
+ "releases": [
+  {
+   "ocid": "ocds-b5fd17-c8b3ff08-3b6f-49f5-a7d2-125680a6bc1a",
+   "id": "35433066-264c-41c5-bb3c-836e971b0da5-920412",
+   "language": "en",
+   "date": "2026-11-03T15:57:56Z",
+   "tag": [
+    "tender"
+   ],
+   "initiationType": "tender",
+   "tender": {
+    "id": "ING-HAAS-CAS-2026",
+    "title": "Candidate Assessment Services",
+    "description": "Ingeus is seeking a specialist assessment platform provider to support clinical and non-clinical volume and specialist recruitment for the Health Assessment Advisory Service (HAAS).\r\n\r\nThe requirement includes hosting bespoke assessment tools that have already been created as one element of a wider recruitment process. It may also include supplier-recommended assessment types, such as video situational judgement tests or work sample assessments.\r\n\r\nThe successful supplier will be responsible for hosting the assessments; scoring and evaluating responses; managing candidate access; and providing",
+    "datePublished": "2026-11-03T15:57:56Z",
+    "status": "active",
+    "classification": {
+     "scheme": "CPV",
+     "id": "79300000",
+     "description": "Market and economic research; polling and statistics"
+    },
+    "items": [
+     {
+      "id": "1",
+      "deliveryAddresses": [
+       {
+        "countryName": "United Kingdom"
+       }
+      ]
+     }
+    ],
+    "minValue": {
+     "amount": 50000,
+     "currency": "GBP"
+    },
+    "value": {
+     "amount": 100000,
+     "currency": "GBP"
+    },
+    "procurementMethod": "open",
+    "procurementMethodDetails": "Open procedure (below threshold)",
+    "tenderPeriod": {
+     "endDate": "2026-11-10T17:00:00Z"
+    },
+    "contractPeriod": {
+     "startDate": "2026-12-01T00:00:00Z",
+     "endDate": "2027-11-30T23:59:59Z"
+    },
+    "suitability": {
+     "sme": true,
+     "vcse": true
+    },
+    "mainProcurementCategory": "services",
+    "documents": [
+     {
+      "id": "1",
+      "documentType": "tenderNotice",
+      "description": "Opportunity notice on Contracts Finder",
+      "url": "https://www.contractsfinder.service.gov.uk/Notice/35433066-264c-41c5-bb3c-836e971b0da5",
+      "datePublished": "2026-11-03T15:57:56Z",
+      "format": "text/html",
+      "language": "en"
+     }
+    ]
+   },
+   "parties": [
+    {
+     "id": "GB-SRS-supplierregistration.cabinetoffice.gov.uk/qjnG752S",
+     "name": "Ingeus",
+     "identifier": {
+      "legalName": "Ingeus",
+      "scheme": "GB-SRS",
+      "id": "supplierregistration.cabinetoffice.gov.uk/qjnG752S"
+     },
+     "address": {
+      "streetAddress": "35 Livery Street",
+      "locality": "Birmingham",
+      "postalCode": "B3 2PB",
+      "countryName": "England"
+     },
+     "contactPoint": {
+      "name": "Julie Weaver",
+      "email": "jweaver@ingeus.co.uk",
+      "telephone": "02072653000"
+     },
+     "details": {
+      "url": "https://www.ingeus.co.uk/"
+     },
+     "roles": [
+      "buyer"
+     ]
+    }
+   ],
+   "buyer": {
+    "id": "GB-SRS-supplierregistration.cabinetoffice.gov.uk/qjnG752S",
+    "name": "Ingeus"
+   }
+  },
+  {
+   "ocid": "ocds-b5fd17-34268465-56d5-47f7-8a48-d039badc7fe7",
+   "id": "3316a624-4ebb-4179-8d5e-019b5e900c61-920420",
+   "language": "en",
+   "date": "2026-11-03T15:04:29Z",
+   "tag": [
+    "tender"
+   ],
+   "initiationType": "tender",
+   "tender": {
+    "id": "RA361141",
+    "title": "RA361141 - Network Professional Services",
+    "description": "To access this competition: \\r\r\n \\r\r\n  login to https://suppliers.multiquote.com and view the opportunity RA361141. Not registered on MultiQuote - visit https://suppliers.multiquote.com then register and quote RA361141 as the reason for registration. Any queries please contact MultiQuote on 0151 482 9230.",
+    "datePublished": "2026-11-03T15:04:29Z",
+    "status": "active",
+    "classification": {
+     "scheme": "CPV",
+     "id": "30200000",
+     "description": "Computer equipment and supplies"
+    },
+    "items": [
+     {
+      "id": "1",
+      "deliveryAddresses": [
+       {
+        "postalCode": "NP4 0YP"
+       },
+       {
+        "countryName": "British Oversea Territories"
+       },
+       {
+        "countryName": "Channel Islands"
+       },
+       {
+        "countryName": "Europe"
+       },
+       {
+        "countryName": "Isle of Man"
+       },
+       {
+        "countryName": "Rest of the World"
+       },
+       {
+        "countryName": "United Kingdom"
+       }
+      ]
+     }
+    ],
+    "procurementMethod": "open",
+    "procurementMethodDetails": "Open procedure",
+    "tenderPeriod": {
+     "endDate": "2026-11-06T12:00:00Z"
+    },
+    "contractPeriod": {
+     "startDate": "2026-11-07T12:00:00Z",
+     "endDate": "2026-11-07T23:59:59Z"
+    },
+    "suitability": {
+     "sme": true,
+     "vcse": false
+    },
+    "mainProcurementCategory": "goods",
+    "documents": [
+     {
+      "id": "1",
+      "documentType": "tenderNotice",
+      "description": "Opportunity notice on Contracts Finder",
+      "url": "https://www.contractsfinder.service.gov.uk/Notice/3316a624-4ebb-4179-8d5e-019b5e900c61",
+      "datePublished": "2026-11-03T15:04:29Z",
+      "format": "text/html",
+      "language": "en"
+     }
+    ]
+   },
+   "parties": [
+    {
+     "id": "GB-CFS-74548",
+     "name": "Aneurin Bevan Health Board",
+     "identifier": {
+      "legalName": "Aneurin Bevan Health Board"
+     },
+     "address": {
+      "streetAddress": "C Block, 2nd Floor",
+      "locality": "Pontypool",
+      "postalCode": "NP4 0YP",
+      "countryName": "England"
+     },
+     "contactPoint": {
+      "name": "Melissa Evans",
+      "email": "support@multiquote.com",
+      "telephone": "0151 482 9230"
+     },
+     "details": {
+      "url": "https://suppliers.multiquote.com"
+     },
+     "roles": [
+      "buyer"
+     ]
+    }
+   ],
+   "buyer": {
+    "id": "GB-CFS-74548",
+    "name": "Aneurin Bevan Health Board"
+   }
+  },
+  {
+   "ocid": "ocds-b5fd17-6ce6e9cc-cc31-4af3-8ae4-3bb6a31a5277",
+   "id": "4878e2bf-a3f8-4e9e-959b-0b79773d9ce2-920410",
+   "language": "en",
+   "date": "2026-11-03T14:31:43Z",
+   "tag": [
+    "tender"
+   ],
+   "initiationType": "tender",
+   "tender": {
+    "id": "LEICSCC001-DN809247-42715559",
+    "title": "Accelerated programme GPRS surveys (Rockingham Road and Market Harborough)",
+    "description": "Ground penetrating radar surveys at various locations in Leicestershire",
+    "status": "active",
+    "classification": {
+     "scheme": "CPV",
+     "id": "71200000",
+     "description": "Architectural and related services"
+    },
+    "additionalClassifications": [
+     {
+      "scheme": "CPV",
+      "id": "71350000",
+      "description": "Engineering-related scientific and technical services"
+     }
+    ],
+    "items": [
+     {
+      "id": "1",
+      "deliveryAddresses": [
+       {
+        "region": "North East",
+        "countryName": "United Kingdom"
+       },
+       {
+        "region": "North West",
+        "countryName": "United Kingdom"
+       },
+       {
+        "region": "Yorkshire and the Humber",
+        "countryName": "United Kingdom"
+       },
+       {
+        "region": "East Midlands",
+        "countryName": "United Kingdom"
+       },
+       {
+        "region": "West Midlands",
+        "countryName": "United Kingdom"
+       },
+       {
+        "region": "East of England",
+        "countryName": "United Kingdom"
+       },
+       {
+        "region": "London",
+        "countryName": "United Kingdom"
+       },
+       {
+        "region": "South East",
+        "countryName": "United Kingdom"
+       },
+       {
+        "region": "South West",
+        "countryName": "United Kingdom"
+       }
+      ]
+     }
+    ],
+    "value": {
+     "amount": 87904.4,
+     "currency": "GBP"
+    },
+    "procurementMethod": "selective",
+    "procurementMethodDetails": "Call-off from a framework agreement",
+    "tenderPeriod": {
+     "endDate": "2025-09-30T12:00:00+01:00"
+    },
+    "contractPeriod": {
+     "startDate": "2025-10-30T00:00:00Z",
+     "endDate": "2026-03-31T23:59:59+01:00"
+    },
+    "suitability": {
+     "sme": true,
+     "vcse": false
+    },
+    "mainProcurementCategory": "services",
+    "documents": [
+     {
+      "id": "1",
+      "documentType": "tenderNotice",
+      "description": "Opportunity notice on Contracts Finder",
+      "url": "https://www.contractsfinder.service.gov.uk/Notice/4878e2bf-a3f8-4e9e-959b-0b79773d9ce2",
+      "datePublished": "2026-11-03T14:23:24Z",
+      "dateModified": "2026-11-03T14:31:43Z",
+      "format": "text/html",
+      "language": "en"
+     }
+    ]
+   },
+   "parties": [
+    {
+     "id": "GB-CFS-52427",
+     "name": "Leicestershire County Council",
+     "identifier": {
+      "legalName": "Leicestershire County Council"
+     },
+     "address": {
+      "streetAddress": "County Hall, Leicester Road, Glenfield",
+      "locality": "Leicester",
+      "postalCode": "LE3 8RA",
+      "countryName": "England"
+     },
+     "contactPoint": {
+      "name": "Ikram Mohemmed",
+      "email": "Ikram.Mohemmed@leics.gov.uk",
+      "telephone": "+44 1163055688"
+     },
+     "details": {
+      "url": "https://www.eastmidstenders.org/index.html"
+     },
+     "roles": [
+      "buyer"
+     ]
+    }
+   ],
+   "buyer": {
+    "id": "GB-CFS-52427",
+    "name": "Leicestershire County Council"
+   }
+  }
+ ]
+}

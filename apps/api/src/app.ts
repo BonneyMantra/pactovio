@@ -28,6 +28,7 @@ import { customerAuthRoutes } from './routes/customer-auth';
 import { onboardingRoutes } from './routes/onboarding';
 import { integrationRoutes } from './routes/integrations';
 import { integrationWorkflowRoutes } from './routes/integration-workflows';
+import { productImageRoutes } from './routes/product-images';
 
 /** Add a route module here. Each module exports `register(r)` and is mounted on both /api (session) and /v1 (API key). */
 export const modules: Register[] = [
@@ -45,6 +46,7 @@ export function buildApp() {
   app.route('/api/onboarding', onboardingRoutes);
   app.route('/api/integrations', integrationRoutes);
   app.route('/api/integrations/workflows', integrationWorkflowRoutes);
+  app.route('/api/products', productImageRoutes);
   app.use('/api/*', async (c, next) => { c.header('cache-control', 'no-store'); await next(); });
   app.route('/api', api.app);
   app.use('/v1/*', async (c, next) => { c.header('cache-control', 'no-store'); await next(); });

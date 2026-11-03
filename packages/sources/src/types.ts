@@ -13,6 +13,12 @@ export const SCAN_COUNTRIES = ['IRL', 'MLT'];
 
 export type TenderRow = Tender;
 
+/** Every public source the onboarding search reads. All of them can be stored in `tenders` (migration 0085 added 'cf' and 'wb'). */
+export const NOTICE_SOURCES = ['ted', 'fts', 'cf', 'wb'] as const;
+export type NoticeSource = typeof NOTICE_SOURCES[number];
+/** A fetched notice before storage: the tenders row shape, with the wider source list. */
+export type PoolTender = Omit<Tender, 'source'> & { source: Tender['source'] | 'cf' | 'wb' };
+
 export const slug = (s: string): string => s.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
 
 /** Stable buyer key used by buyer intel: lower-case ascii slug of the buyer name. */

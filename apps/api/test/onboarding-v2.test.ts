@@ -13,6 +13,8 @@ const call = (path: string, method = 'GET', body?: unknown, cookie = a.cookie) =
 }), env, ctx);
 const json = async (res: Response) => res.json() as Promise<any>;
 const company = { name: 'Meridian Instruments', country: 'my', supplier_segment: 'industrial', capabilities: ['Pressure calibration', 'Laser level supply'] };
+const profile = { description: 'Pressure and temperature calibration equipment for process plants in Malaysia.', offerings: ['Pressure calibrators'],
+  markets: ['Water utilities'], customers: ['Hospital laboratories'] };
 beforeAll(async () => {
   ({ env, dispose } = await makeEnv());
   env = { ...env, MODELS_DISABLED: '1' } as Env;
@@ -27,15 +29,14 @@ describe('onboarding v2 state', () => {
     expect(empty).toMatchObject({ company: {}, completed_at: null, person: {}, profile: { confirmed_at: null }, goals: [],
       setup: { version: 2, stage: 'about', completed_at: null }, results: {}, website_analysis: null });
     const res = await call('/onboarding', 'PATCH', { person: { full_name: 'Aisyah Rahman', job_title: 'Sales engineer' }, goals: ['quotes', 'deadlines', 'quotes'],
-      setup: { stage: 'company' }, profile: { offerings: ['Pressure calibrators'], confirmed_at: '1999-01-01T00:00:00Z' } });
+      setup: { stage: 'company' }, profile: { offerings: ['Pressure calibrators'] } });
     expect(res.status).toBe(200);
     const body = await json(res);
     expect(body.person).toEqual({ full_name: 'Aisyah Rahman', job_title: 'Sales engineer' });
     expect(body.goals).toEqual(['quotes', 'deadlines']);
     expect(body.setup).toEqual({ version: 2, stage: 'company', completed_at: null });
     expect(body.profile.offerings).toEqual(['Pressure calibrators']);
-    expect(body.profile.confirmed_at).not.toBe('1999-01-01T00:00:00Z');
-    expect(Date.now() - Date.parse(body.profile.confirmed_at)).toBeLessThan(60000);
+    expect(body.profile.confirmed_at).toBeNull(); // confirmation and its server timestamp are covered in onboarding-v3.test.ts
     const merged = await json(await call('/onboarding', 'PATCH', { person: { job_title: 'Head of sales' } }));
     expect(merged.person).toEqual({ full_name: 'Aisyah Rahman', job_title: 'Head of sales' });
     for (const bad of [{ setup: { completed_at: '2026-11-02T00:00:00Z' } }, { goals: ['growth'] }, { person: { role: 'owner' } }, { results: { quotes: { quote_id: 'quo_x' } } }]) {
@@ -46,7 +47,7 @@ describe('onboarding v2 state', () => {
   it('requires a valid company for v2 completion, then completes v1 too', async () => {
     const blocked = await call('/onboarding/setup/complete', 'POST', {});
     expect(blocked.status).toBe(409); expect(await json(blocked)).toMatchObject({ code: 'company_incomplete' });
-    await call('/onboarding', 'PATCH', { company });
+    await call('/onboarding', 'PATCH', { company, profile });
     const done = await json(await call('/onboarding/setup/complete', 'POST', {}));
     expect(done.completed_at).toBeTruthy(); expect(done.setup.completed_at).toBeTruthy(); expect(done.setup.stage).toBe('ready');
     const again = await json(await call('/onboarding/setup/complete', 'POST', {}));
@@ -55,7 +56,11 @@ describe('onboarding v2 state', () => {
   });
   it('never resets a completed v1 profile and shows returning users setup as unfinished', async () => {
     await call('/onboarding', 'PATCH', { company }, b.cookie);
-    const v1 = await json(await call('/onboarding/complete', 'POST', {}, b.cookie));
+    // A fresh profile without the v3 company fields cannot complete through the legacy route…
+    expect((await call('/onboarding/complete', 'POST', {}, b.cookie)).status).toBe(409);
+    // …but a user who completed v1 before v3 keeps that completion.
+    await env.DB.prepare('UPDATE company_onboarding SET completed_at = ? WHERE workspace_id = ?').bind('2026-11-01T08:00:00.000Z', b.workspace).run();
+    const v1 = await json(await call('/onboarding', 'GET', undefined, b.cookie));
     expect(v1.completed_at).toBeTruthy(); expect(v1.setup.completed_at).toBeNull();
     expect((await call('/onboarding', 'PATCH', { company: { capabilities: [] } }, b.cookie)).status).toBe(400);
     const resumed = await json(await call('/onboarding', 'PATCH', { setup: { stage: 'goals' }, goals: ['opportunities'] }, b.cookie));

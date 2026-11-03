@@ -102,30 +102,41 @@ describe('POST /api/onboarding/opportunities/search', () => {
         VALUES ('tnd_onb_closed', 'fts', 'ocds-closed', 'Closed calibration contract', 'NHS Supply Chain', 'nhs', 'GB', '["38410000"]', '2020-01-01T00:00:00Z', null, null)`),
     ]);
   });
-  const sourcesDown = (url: URL) => /ted\.europa\.eu|find-tender/.test(url.hostname) ? new Response('down', { status: 503 }) : null;
-  it('requires a segment, returns CPV-filtered keyword fit with honest labels and saves a summary', async () => {
+  const sourcesDown = (url: URL) => /ted\.europa\.eu|find-tender|contractsfinder|worldbank/.test(url.hostname) ? new Response('down', { status: 503 }) : null;
+  it('requires a segment and returns unassessed notices without keyword labels when models are off', async () => {
     env = { ...env, MODELS_DISABLED: '1' } as Env;
     stub('off', sourcesDown);
     const blocked = await call('/onboarding/opportunities/search');
-    expect(blocked.status).toBe(409);
+    expect(blocked.status).toBe(409); expect(await json(blocked)).toMatchObject({ code: 'company_incomplete', missing: ['supplier_segment'] });
     await app.fetch(new Request('https://pactovio.example/api/onboarding', { method: 'PATCH', headers: { cookie: a.cookie, origin: 'https://pactovio.example', 'content-type': 'application/json' },
       body: JSON.stringify({ company: { name: 'Meridian Instruments', country: 'MY', supplier_segment: 'industrial', capabilities: ['Pressure calibration'] }, profile: { offerings: ['Calibration instruments'] } }) }), env, ctx);
     const out = await json(await call('/onboarding/opportunities/search'));
-    expect(out.ai).toEqual({ ran: false, code: 'models_disabled' });
-    expect(out.sources_failed).toEqual(['ted', 'fts']);
+    expect(out.ai).toMatchObject({ ran: false, code: 'models_disabled', assessed: 0, cached: 0, unassessed: 1 });
+    expect(out.sources_failed).toEqual(['ted', 'fts', 'cf', 'wb']);
+    expect(out).toMatchObject({ total: 1, offset: 0, limit: 20, sort: 'relevance' });
+    expect(out.lang).toBe('en');
     expect(out.notices.map((n: any) => n.id)).toEqual(['712345-2026']);
-    expect(out.notices[0]).toMatchObject({ source: 'ted', buyer: 'Uisce Eireann', cpv: ['38410000'], fit: { method: 'keyword' } });
+    expect(out.notices[0]).toMatchObject({ source: 'ted', buyer: 'Uisce Eireann', country_code: 'IE', country_name: 'Ireland', translated: false,
+      title: 'Supply of pressure calibration instruments for water laboratories', original_title: 'Supply of pressure calibration instruments for water laboratories',
+      cpv: [{ code: '38410000', label: 'Laboratory, optical and precision equipments (excl. glasses)' }],
+      fit: { method: 'unassessed', reasons: [], strengths: [], risks: [] } });
+    expect(out.notices[0].days_left).toBeGreaterThanOrEqual(19);
     expect(out.notices[0].fit.score).toBeUndefined();
-    expect(out.notices[0].fit.reasons[0]).toMatch(/pressure|calibration|instruments/);
+    expect(JSON.stringify(out)).not.toMatch(/keyword/i);
     const saved = await json(await app.fetch(new Request('https://pactovio.example/api/onboarding', { headers: { cookie: a.cookie } }), env, ctx));
-    expect(saved.results.opportunities).toMatchObject({ count: 1, ai_ran: false, top: [{ id: '712345-2026' }] });
+    expect(saved.results.opportunities).toMatchObject({ count: 1, ai_ran: false, lang: 'en', top: [{ id: '712345-2026' }] });
   });
-  it('uses Lightning triage scores when models answer', async () => {
+  it('translates and scores with one batched model call when models answer', async () => {
     env = { ...env, MODELS_DISABLED: undefined } as Env;
-    stub(() => ({ fit_score: 82, reason: 'Calibration instruments for labs match the stated pressure calibration capability.', door: 'tender' }), sourcesDown);
-    const out = await json(await call('/onboarding/opportunities/search'));
-    expect(out.ai).toEqual({ ran: true });
-    expect(out.notices[0].fit).toEqual({ method: 'ai', score: 82, reasons: ['Calibration instruments for labs match the stated pressure calibration capability.'] });
+    stub(() => ({ items: [{ ref: '1', title: 'Dostawa przyrządów do kalibracji ciśnienia', summary: 'Uisce Eireann kupuje przyrządy kalibracyjne do laboratoriów.',
+      score: 82, reasons: ['Zakres pasuje do kalibracji ciśnienia.', 'Kupujący to przedsiębiorstwo wodne.'], strengths: ['Kalibracja ciśnienia'], risks: ['Brak lokalnego serwisu w Irlandii'] }] }), sourcesDown);
+    const out = await json(await call('/onboarding/opportunities/search', { lang: 'pl-PL' }));
+    expect(out.ai).toMatchObject({ ran: true, assessed: 1, cached: 0, unassessed: 0 });
+    expect(out.lang).toBe('pl');
+    expect(out.notices[0]).toMatchObject({ title: 'Dostawa przyrządów do kalibracji ciśnienia', translated: true, country_name: 'Irlandia',
+      url: 'https://ted.europa.eu/pl/notice/-/detail/712345-2026' });
+    expect(out.notices[0].fit).toEqual({ method: 'ai', score: 82, reasons: ['Zakres pasuje do kalibracji ciśnienia.', 'Kupujący to przedsiębiorstwo wodne.'],
+      strengths: ['Kalibracja ciśnienia'], risks: ['Brak lokalnego serwisu w Irlandii'] });
   });
   it('reports sources_unavailable instead of an empty success when nothing could be read', async () => {
     await env.DB.prepare("UPDATE tenders SET deadline = '2020-01-01T00:00:00Z' WHERE id = 'tnd_onb_cal'").run();

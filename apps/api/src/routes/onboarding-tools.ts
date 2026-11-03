@@ -1,13 +1,16 @@
 import type { Hono, Context } from 'hono';
 import { z } from 'zod';
 import {
-  DeadlineExtractInput, DeadlinesSaveInput, HttpError, QuoteCreateInput, QuoteDraftInput, WebsiteAnalyzeInput,
+  DeadlineExtractInput, DeadlinesSaveInput, HttpError, OpportunityAssessInput, OpportunityDetailParams, OpportunityDetailQuery, OpportunitySaveInput, OpportunitySearchInput,
+  QuoteCreateInput, QuoteDraftInput, WebsiteAnalyzeInput,
 } from '@pactovio/contracts';
 import { takeLimit } from '../lib/customer-security';
 import { extractDeadlines } from '../lib/deadline-extract';
 import { listDeadlines, refineTitles, saveDeadlines } from '../lib/deadline-store';
 import { createOnboardingQuote, quoteCandidates } from '../lib/onboarding-quote';
 import { patchData, readOnboarding, saveResult } from '../lib/onboarding-state';
+import { assessByIds, opportunityDetail, saveOpportunity } from '../lib/opportunity-detail';
+import { resolveLang } from '../lib/opportunity-notice';
 import { searchOpportunities } from '../lib/opportunity-search';
 import { analyzeWebsite } from '../lib/site-analyze';
 import type { AppEnv } from '../lib/types';
@@ -22,6 +25,18 @@ async function body<T extends z.ZodType>(c: Context<AppEnv>, schema: T, maxBytes
   return schema.parse(raw);
 }
 
+const LISTS = new Set(['regions', 'countries', 'domains']), NUMBERS = new Set(['min_value', 'max_value', 'deadline_within_days', 'offset', 'limit']);
+/** Query-string form of the search filters; values are still validated by OpportunitySearchInput. */
+function searchQuery(params: URLSearchParams): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const key of new Set(params.keys())) {
+    const name = key.replace(/\[\]$/, ''), values = params.getAll(key);
+    if (LISTS.has(name)) out[name] = values.flatMap((v) => v.split(',')).map((v) => v.trim()).filter(Boolean);
+    else out[name] = NUMBERS.has(name) && values[0] !== '' && Number.isFinite(Number(values[0])) ? Number(values[0]) : values[0];
+  }
+  return out;
+}
+
 export function registerOnboardingTools(app: Hono<AppEnv>): void {
   app.post('/website/analyze', async (c) => {
     const ws = c.get('auth').workspaceId, input = await body(c, WebsiteAnalyzeInput, 8_000);
@@ -33,14 +48,38 @@ export function registerOnboardingTools(app: Hono<AppEnv>): void {
 
   app.post('/opportunities/search', async (c) => {
     const ws = c.get('auth').workspaceId;
-    await body(c, z.object({}).strict(), 1_000);
-    await takeLimit(c.env.DB, `onboarding-opps:${ws}`, 12, 3600);
-    const out = await searchOpportunities(c.env, ws, await readOnboarding(c.env.DB, ws));
-    await saveResult(c.env.DB, ws, 'opportunities', {
-      count: out.notices.length, ai_ran: out.ai.ran, ai_scored: out.notices.filter((n) => n.fit.method === 'ai').length,
-      top: out.notices.slice(0, 10), sources_failed: out.sources_failed,
-    });
+    // Filters may come as query parameters (?countries=PL&countries=DE or countries=PL,DE) and/or in the JSON body (body wins).
+    const raw = await body(c, z.record(z.string(), z.unknown()), 4_000);
+    const input = OpportunitySearchInput.parse({ ...searchQuery(new URL(c.req.url).searchParams), ...raw });
+    await takeLimit(c.env.DB, `onboarding-opps:${ws}`, 120, 3600);
+    const lang = resolveLang(input.lang, c.req.header('accept-language'));
+    const out = await searchOpportunities(c.env, ws, await readOnboarding(c.env.DB, ws), input, lang);
+    if (input.offset === 0) {
+      await saveResult(c.env.DB, ws, 'opportunities', {
+        count: out.total, lang, ai_ran: out.ai.ran, ai_scored: out.notices.filter((n) => n.fit.method === 'ai').length,
+        top: out.notices.slice(0, 10), sources_failed: out.sources_failed,
+      });
+    }
     return c.json(out);
+  });
+  app.post('/opportunities/assess', async (c) => {
+    const ws = c.get('auth').workspaceId, input = await body(c, OpportunityAssessInput, 4_000);
+    await takeLimit(c.env.DB, `onboarding-opps-assess:${ws}`, 30, 3600);
+    const lang = resolveLang(input.lang, c.req.header('accept-language'));
+    return c.json(await assessByIds(c.env, await readOnboarding(c.env.DB, ws), input.ids, lang));
+  });
+  app.post('/opportunities/save', async (c) => {
+    const ws = c.get('auth').workspaceId, input = await body(c, OpportunitySaveInput, 1_000);
+    await takeLimit(c.env.DB, `onboarding-opps-save:${ws}`, 60, 3600);
+    const lang = resolveLang(input.lang, c.req.header('accept-language'));
+    return c.json(await saveOpportunity(c.env, ws, await readOnboarding(c.env.DB, ws), input.source, input.id, lang));
+  });
+  app.get('/opportunities/:source/:id', async (c) => {
+    const ws = c.get('auth').workspaceId;
+    const params = OpportunityDetailParams.parse(c.req.param()), query = OpportunityDetailQuery.parse(c.req.query());
+    await takeLimit(c.env.DB, `onboarding-opps-detail:${ws}`, 120, 3600);
+    const lang = resolveLang(query.lang, c.req.header('accept-language'));
+    return c.json(await opportunityDetail(c.env, await readOnboarding(c.env.DB, ws), params.source, params.id, lang));
   });
 
   app.post('/deadlines/extract', async (c) => {

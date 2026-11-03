@@ -10,7 +10,7 @@ export const ErrorBody = z.object({ error: z.string(), code: z.string().optional
 export type ErrorBody = z.infer<typeof ErrorBody>;
 
 export const Segment = z.enum(['it', 'industrial']);
-export const TenderSource = z.enum(['ted', 'etenders', 'fts', 'upload']);
+export const TenderSource = z.enum(['ted', 'etenders', 'fts', 'upload', 'cf', 'wb']);
 export const Door = z.enum(['tender', 'rfp', 'design']);
 export const IntakeSource = z.enum(['scan', 'upload', 'gmail', 'outlook', 'api', 'chat', 'mcp']);
 export const IntakeStatus = z.enum(['new', 'classified', 'processing', 'ready', 'ignored']);

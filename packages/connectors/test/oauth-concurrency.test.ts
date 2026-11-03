@@ -8,7 +8,7 @@ import { getConnector } from '../src/store';
 import { fakeComposio } from './fake-composio';
 
 let env: Env, dispose: () => Promise<void>;
-beforeAll(async () => { ({ env, dispose } = await makeEnv()); env.COMPOSIO_API_KEY = 'transport-test'; }, 60000);
+beforeAll(async () => { ({ env, dispose } = await makeEnv()); env.COMPOSIO_API_KEY = 'transport-test'; env.COMPOSIO_CALLBACK_VERIFIER_ENABLED = undefined; }, 60000);
 afterAll(async () => dispose?.());
 
 describe('OAuth callback replacement during provider verification', () => {

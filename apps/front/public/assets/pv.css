@@ -189,7 +189,8 @@ textarea.input { height: auto; min-height: 88px; padding: 10px 12px; resize: ver
 .toast-wrap { position: fixed; right: 20px; bottom: 20px; display: flex; flex-direction: column; gap: 8px; z-index: 60; }
 .toast { background: var(--ink); color: #fff; padding: 10px 14px; border-radius: 10px; font-size: 14px; box-shadow: var(--shadow-pop); animation: rise 240ms var(--ease); }
 @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
-.fade-in { animation: rise 320ms var(--ease) both; }
+/* backwards, not both: a retained end transform would trap fixed overlays (setup sheets) inside the page. */
+.fade-in { animation: rise 320ms var(--ease) backwards; }
 
 /* Logos row / marquee */
 .marquee { overflow: hidden; border-top: 0.5px solid var(--line); border-bottom: 0.5px solid var(--line); mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); }

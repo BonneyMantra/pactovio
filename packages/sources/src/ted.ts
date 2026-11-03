@@ -10,6 +10,7 @@ export const TED_FIELDS = [
   'publication-number', 'notice-title', 'notice-type', 'buyer-name', 'buyer-country', 'publication-date',
   'deadline-receipt-tender-date-lot', 'deadline-receipt-tender-time-lot', 'estimated-value-lot', 'estimated-value-cur-lot',
   'total-value', 'classification-cpv', 'title-lot', 'identifier-lot', 'document-url-lot', 'description-lot', 'links',
+  'procedure-type', 'official-language',
 ] as const;
 
 export interface TedSearchParams {
@@ -21,7 +22,7 @@ export interface TedSearchParams {
 }
 
 const Lang = z.record(z.string(), z.union([z.string(), z.array(z.string())]));
-const Notice = z.object({
+export const TedNoticeSchema = z.object({
   'publication-number': z.string(),
   'notice-title': Lang.optional(),
   'notice-type': z.string().optional(),
@@ -39,7 +40,10 @@ const Notice = z.object({
   'document-url-lot': z.array(z.string()).optional(),
   'description-lot': Lang.optional(),
   links: z.object({ html: z.record(z.string(), z.string()).optional(), xml: z.record(z.string(), z.string()).optional() }).passthrough().optional(),
+  'procedure-type': z.string().optional(),
+  'official-language': z.array(z.string()).optional(),
 });
+const Notice = TedNoticeSchema;
 export type TedNotice = z.infer<typeof Notice>;
 const Response = z.object({ notices: z.array(z.unknown()), totalNoticeCount: z.number().optional() });
 
@@ -130,6 +134,8 @@ export function mapTedNotice(raw: TedNotice): Tender {
       ...(portal ? { portal: portal.host, resource_id: portal.resourceId } : {}),
       document_urls: [...new Set(n['document-url-lot'] ?? [])],
       description: first(pick(n['description-lot']))?.slice(0, 1500) ?? null,
+      ...(n['procedure-type'] ? { procedure_type: n['procedure-type'] } : {}),
+      ...(n['official-language']?.[0] ? { official_language: n['official-language'][0] } : {}),
     },
   };
 }
@@ -139,7 +145,8 @@ export function buildTedQuery(o: { since: string; cpvPrefixes: string[]; countri
   const cpv = o.cpvPrefixes.map((p) => `classification-cpv=${p.length >= 8 ? p : `${p}*`}`).join(' OR ');
   const countries = o.countries.map((c) => `buyer-country=${c}`).join(' OR ');
   const types = (o.noticeTypes ?? ['cn-standard']).map((t) => `notice-type=${t}`).join(' OR ');
-  return `publication-date>=${o.since.replace(/-/g, '')} AND (${types}) AND (${countries}) AND (${cpv})`;
+  // An empty country list means every buyer country (worldwide onboarding search).
+  return `publication-date>=${o.since.replace(/-/g, '')} AND (${types})${countries ? ` AND (${countries})` : ''} AND (${cpv})`;
 }
 
 /** Search TED (v3, no key). Returns tender rows; notices that fail validation are skipped, not fatal. */

@@ -1,0 +1,185 @@
+{
+    "uri": "https://www.find-tender.service.gov.uk/api/1.0/ocdsReleasePackages/104375-2026?limit=100&updatedTo=2026-11-03T16:32:08",
+    "version": "1.1",
+    "extensions": [
+        "https://standard.open-contracting.org/profiles/eu/latest/en/extension.json",
+        "https://raw.githubusercontent.com/open-contracting-extensions/ocds_amendment_rationale_classifications_extension/master/extension.json",
+        "https://raw.githubusercontent.com/open-contracting-extensions/ocds_budget_breakdown_extension/master/extension.json",
+        "https://raw.githubusercontent.com/open-contracting-extensions/ocds_contract_completion_extension/master/extension.json",
+        "https://raw.githubusercontent.com/open-contracting-extensions/ocds_documentation_extension/master/extension.json",
+        "https://raw.githubusercontent.com/open-contracting-extensions/ocds_pagination_extension/master/extension.json",
+        "https://raw.githubusercontent.com/open-contracting-extensions/ocds_suitability_extension/master/extension.json",
+        "https://raw.githubusercontent.com/portaledcahn/ocds_Links_extension/main/extension.json",
+        "https://raw.githubusercontent.com/cabinetoffice/ocds_uk_extension/main/extension.json"
+    ],
+    "publishedDate": "2026-11-03T15:52:14Z",
+    "publisher": {
+        "name": "Cabinet Office",
+        "scheme": "GB-GOR",
+        "uid": "D2",
+        "uri": "https://www.gov.uk/government/organisations/cabinet-office"
+    },
+    "license": "http://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+    "publicationPolicy": "https://www.gov.uk/government/publications/open-contracting",
+    "releases": [
+        {
+            "ocid": "ocds-h6vhtk-0796f1",
+            "id": "104375-2026",
+            "date": "2026-11-03T15:52:14Z",
+            "tag": [
+                "planning",
+                "tender"
+            ],
+            "initiationType": "tender",
+            "tender": {
+                "id": "ocds-h6vhtk-0796f1",
+                "legalBasis": {
+                    "id": "32014L0024",
+                    "scheme": "CELEX"
+                },
+                "title": "PME Opportunity for NDP Assessments",
+                "status": "active",
+                "classification": {
+                    "scheme": "CPV",
+                    "id": "85141000",
+                    "description": "Services provided by medical personnel"
+                },
+                "mainProcurementCategory": "services",
+                "description": "PME opportunity for the outsourcing of ADHD and ASD Assessments.",
+                "value": {
+                    "amount": 5000000.00,
+                    "currency": "GBP"
+                },
+                "lots": [
+                    {
+                        "id": "1",
+                        "description": "PME opportunity for the outsourcing of ADHD and ASD Assessments. This will contribute to determining the Procurement strategy the Authorities will undertake. Additional information: This notice is a Preliminary Market Engagement opportunity only and is not a call for competition.",
+                        "awardCriteria": {
+                            "criteria": [
+                                {
+                                    "type": "price"
+                                }
+                            ]
+                        },
+                        "contractPeriod": {
+                            "durationInDays": 1080
+                        },
+                        "status": "active"
+                    }
+                ],
+                "items": [
+                    {
+                        "id": "1",
+                        "deliveryAddresses": [
+                            {
+                                "region": "UK"
+                            }
+                        ],
+                        "relatedLot": "1"
+                    }
+                ],
+                "submissionMethod": [
+                    "electronicSubmission",
+                    "written"
+                ],
+                "submissionMethodDetails": "https://atamis-1928.my.site.com/s/Welcome",
+                "communication": {
+                    "atypicalToolUrl": "https://atamis-1928.my.site.com/s/Welcome"
+                },
+                "procurementMethod": "selective",
+                "procurementMethodDetails": "Restricted procedure",
+                "tenderPeriod": {
+                    "endDate": "2026-11-16T17:00:00Z"
+                },
+                "submissionTerms": {
+                    "languages": [
+                        "en"
+                    ]
+                }
+            },
+            "parties": [
+                {
+                    "name": "University Hospitals Birmingham NHS Foundation Trust",
+                    "id": "GB-FTS-154",
+                    "identifier": {
+                        "legalName": "University Hospitals Birmingham NHS Foundation Trust"
+                    },
+                    "address": {
+                        "streetAddress": "Mindelsohn Way",
+                        "locality": "Birmingham",
+                        "region": "UKG3",
+                        "postalCode": "B15 2WB",
+                        "countryName": "United Kingdom"
+                    },
+                    "contactPoint": {
+                        "name": "Bethan Davies",
+                        "email": "bethan.davies@uhb.nhs.uk",
+                        "url": "https://atamis-1928.my.site.com/s/Welcome"
+                    },
+                    "roles": [
+                        "buyer"
+                    ],
+                    "details": {
+                        "url": "https://www.uhb.nhs.uk/",
+                        "buyerProfile": "https://www.uhb.nhs.uk/",
+                        "classifications": [
+                            {
+                                "scheme": "TED_CA_TYPE",
+                                "id": "BODY_PUBLIC",
+                                "description": "Body governed by public law"
+                            },
+                            {
+                                "scheme": "COFOG",
+                                "id": "07",
+                                "description": "Health"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "Birmingham Community Healthcare NHS Foundation Trust",
+                    "id": "GB-FTS-61084",
+                    "identifier": {
+                        "legalName": "Birmingham Community Healthcare NHS Foundation Trust"
+                    },
+                    "address": {
+                        "streetAddress": "3 Priestley Wharf, Holt Street",
+                        "locality": "Birmingham",
+                        "postalCode": "B7 4BN",
+                        "countryName": "United Kingdom"
+                    },
+                    "roles": [
+                        "reviewBody"
+                    ],
+                    "details": {
+                        "url": "https://www.bhamcommunity.nhs.uk/"
+                    }
+                },
+                {
+                    "name": "University Hospitals Birmingham NHS Foundation Trust",
+                    "id": "GB-FTS-118686",
+                    "identifier": {
+                        "legalName": "University Hospitals Birmingham NHS Foundation Trust"
+                    },
+                    "address": {
+                        "streetAddress": "Queen Elizabeth Hospital Birmingham, Mindelsohn Way, Edgbaston",
+                        "locality": "Birmingham",
+                        "postalCode": "B15 2GW",
+                        "countryName": "United Kingdom"
+                    },
+                    "roles": [
+                        "mediationBody"
+                    ],
+                    "details": {
+                        "url": "https://www.uhb.nhs.uk/"
+                    }
+                }
+            ],
+            "buyer": {
+                "id": "GB-FTS-154",
+                "name": "University Hospitals Birmingham NHS Foundation Trust"
+            },
+            "language": "en"
+        }
+    ]
+}

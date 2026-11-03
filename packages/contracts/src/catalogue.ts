@@ -12,4 +12,6 @@ export const ProductInput = z.object({
   unit, unit_price_minor: money, currency,
   internal_unit_cost_minor: money, cost_currency: currency, cost_unit: unit,
   zero_price_confirmed: z.boolean().optional(), zero_cost_confirmed: z.boolean().optional(),
+  /** Public product page; used to fetch the product image. */
+  source_url: z.url().max(2048).refine((v) => /^https?:\/\//i.test(v), 'Use an http or https URL').optional(),
 }).strict();

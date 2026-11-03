@@ -13,3 +13,4 @@ export * from './errors';
 export * from './customer';
 export * from './catalogue';
 export * from './onboarding-v2';
+export * from './onboarding-v3';
